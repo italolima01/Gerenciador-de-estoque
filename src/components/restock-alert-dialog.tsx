@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -23,8 +24,15 @@ const zoneInfoMap: { [key: string]: { variant: BadgeProps['variant'], text: stri
   green: { variant: 'success', text: 'Ideal', Icon: CheckCircle },
 };
 
+const recommendationMap: { [key: string]: string } = {
+    red: 'Nível de estoque crítico. Recomenda-se reabastecimento imediato para evitar ruptura.',
+    yellow: 'Nível de estoque em atenção. Monitore as vendas e planeje o reabastecimento para breve.',
+    green: 'Nível de estoque ideal. Nenhuma ação de reabastecimento é necessária no momento.',
+};
+
 export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAlertDialogProps) {
-    const zoneInfo = zoneInfoMap[product.zone] || zoneInfoMap.green;
+    const zoneInfo = zoneInfoMap[product.zone] || zoneInfoMap.yellow;
+    const recommendation = recommendationMap[product.zone] || recommendationMap.yellow;
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -35,7 +43,7 @@ export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAle
             Alerta de Reabastecimento
           </DialogTitle>
           <DialogDescription>
-            Análise e recomendação gerada por IA para {product.name}.
+            Análise e recomendação para {product.name}.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 space-y-4">
@@ -49,7 +57,7 @@ export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAle
           <div className="rounded-lg border bg-background p-4">
             <h4 className="font-semibold text-foreground">Recomendação</h4>
             <p className="mt-2 text-sm text-muted-foreground">
-              {product.restockRecommendation}
+              {recommendation}
             </p>
           </div>
            <div className="flex items-center justify-between rounded-lg border p-4">
