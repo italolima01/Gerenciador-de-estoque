@@ -69,21 +69,30 @@ export function Dashboard() {
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(async () => {
-      const newProductId = await addFsProduct(newProductData);
-      
-      const newProductWithStatus: ProductWithStatus = { 
-        ...newProductData, 
-        id: newProductId,
-        zone: 'green', // Default status for new products
-        restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
-        confidenceLevel: 'low'
-      };
-      setProducts(prev => [newProductWithStatus, ...prev]);
-      setAddDialogOpen(false);
-      toast({
-            title: "Produto Adicionado!",
-            description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
-      });
+      try {
+        const newProductId = await addFsProduct(newProductData);
+        
+        const newProductWithStatus: ProductWithStatus = { 
+          ...newProductData, 
+          id: newProductId,
+          zone: 'green', // Default status for new products
+          restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
+          confidenceLevel: 'low'
+        };
+        setProducts(prev => [newProductWithStatus, ...prev]);
+        setAddDialogOpen(false);
+        toast({
+              title: "Produto Adicionado!",
+              description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
+        });
+      } catch (error) {
+        console.error("Failed to add product: ", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao Adicionar Produto",
+          description: "Não foi possível salvar o novo produto. Tente novamente.",
+        });
+      }
     });
   };
 
