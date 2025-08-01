@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +50,7 @@ interface AddProductSheetProps {
 }
 
 export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending }: AddProductSheetProps) {
+  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -112,7 +115,7 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Data de Vencimento</FormLabel>
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -131,7 +134,10 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          setCalendarOpen(false);
+                        }}
                         disabled={(date) => date < new Date()}
                         initialFocus
                       />

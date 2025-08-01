@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +7,7 @@ import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +50,8 @@ interface OrderRegistrationFormProps {
 
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
   const { toast } = useToast();
+  const [isCalendarOpen, setCalendarOpen] = React.useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -129,7 +133,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel>Data de Entrega</FormLabel>
-                        <Popover>
+                        <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
                             <PopoverTrigger asChild>
                             <FormControl>
                                 <Button
@@ -148,7 +152,10 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                             <Calendar
                                 mode="single"
                                 selected={field.value}
-                                onSelect={field.onChange}
+                                onSelect={(date) => {
+                                  field.onChange(date);
+                                  setCalendarOpen(false);
+                                }}
                                 disabled={(date) => date < new Date()}
                                 initialFocus
                             />
