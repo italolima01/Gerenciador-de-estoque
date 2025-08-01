@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useMemo } from 'react';
-import { PlusCircle, Search } from 'lucide-react';
+import { useState, useEffect, useTransition, useMemo, useCallback, useRef } from 'react';
+import { PlusCircle, Search, Loader2 } from 'lucide-react';
 
 import type { ProductWithStatus, Product, Order } from '@/lib/types';
-import { getInitialProducts, getProductStatus } from '@/app/actions';
+import { getInitialProducts, getProductStatus, searchProducts } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -19,6 +19,21 @@ import { RegisteredOrdersList } from './registered-orders-list';
 import { OrderDetailsDialog } from './order-details-dialog';
 import { Input } from './ui/input';
 
+// Debounce helper function
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+  let timeout: NodeJS.Timeout | null = null;
+
+  return (...args: Parameters<F>): Promise<ReturnType<F>> => {
+    return new Promise(resolve => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      timeout = setTimeout(() => resolve(func(...args)), waitFor);
+    });
+  };
+}
+
+
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,11 +43,14 @@ export function Dashboard() {
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     getInitialProducts().then((initialProducts) => {
       setProducts(initialProducts);
+      setFilteredProductNames(initialProducts.map(p => p.name));
       setIsLoading(false);
     });
   }, []);
@@ -40,7 +58,10 @@ export function Dashboard() {
   const handleAddProduct = (newProduct: Product) => {
     startTransition(async () => {
       const status = await getProductStatus(newProduct);
-      setProducts(prev => [{...newProduct, ...status}, ...prev]);
+      const newProductWithStatus = { ...newProduct, ...status };
+      setProducts(prev => [newProductWithStatus, ...prev]);
+      // After adding, update the filtered list to include the new product
+      setFilteredProductNames(prev => prev ? [...prev, newProduct.name] : [newProduct.name]);
       setAddSheetOpen(false);
     });
   };
@@ -89,11 +110,38 @@ export function Dashboard() {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
   
+  const allProductNames = useMemo(() => products.map(p => p.name), [products]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query) {
+        setFilteredProductNames(allProductNames);
+        setIsSearching(false);
+        return;
+      }
+      setIsSearching(true);
+      const names = await searchProducts(query, allProductNames);
+      setFilteredProductNames(names);
+      setIsSearching(false);
+    }, 500),
+    [allProductNames] 
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
+  };
+  
   const filteredProducts = useMemo(() => {
+    if (filteredProductNames === null) {
+      return products;
+    }
     return products.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      filteredProductNames.includes(product.name)
     );
-  }, [products, searchQuery]);
+  }, [products, filteredProductNames]);
 
 
   return (
@@ -132,9 +180,12 @@ export function Dashboard() {
                 type="search"
                 placeholder="Pesquisar produtos..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full rounded-lg bg-background pl-10"
               />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+              )}
             </div>
             {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -221,4 +272,3 @@ export function Dashboard() {
     </>
   );
 }
-

@@ -1,5 +1,6 @@
 'use server';
 
+import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
 import { generateRestockAlert, type GenerateRestockAlertOutput } from '@/ai/flows/generate-restock-alert';
 import { products as mockProducts } from '@/lib/data';
 import type { Product, ProductWithStatus } from '@/lib/types';
@@ -39,4 +40,12 @@ export async function getProductStatus(product: Product): Promise<GenerateRestoc
       expirationDate: product.expirationDate,
     });
     return alert;
+}
+
+export async function searchProducts(query: string, allProductNames: string[]): Promise<string[]> {
+  if (!query) {
+    return allProductNames;
+  }
+  const result = await findRelevantProducts({ query, productNames: allProductNames });
+  return result.relevantProductNames;
 }
