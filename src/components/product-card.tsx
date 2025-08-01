@@ -3,6 +3,7 @@
 
 import Image from 'next/image';
 import { MoreVertical, Bell, ShoppingCart, Trash2 } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 
 import type { ProductWithStatus } from '@/lib/types';
 import {
@@ -22,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: ProductWithStatus;
@@ -49,8 +51,25 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
+function getExpirationDateColor(expirationDate: string): string {
+    const today = new Date();
+    const expiry = parseISO(expirationDate);
+    const daysUntilExpiration = differenceInDays(expiry, today);
+
+    if (daysUntilExpiration <= 14) {
+        return 'text-destructive'; // Red
+    }
+    if (daysUntilExpiration <= 30) {
+        return 'text-yellow-600'; // Yellow
+    }
+    return 'text-muted-foreground'; // Green (or default)
+}
+
 
 export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick }: ProductCardProps) {
+  const expirationDateColor = getExpirationDateColor(product.expirationDate);
+  const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg">
       <CardHeader className="p-0">
@@ -73,7 +92,9 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
             </Badge>
         </div>
         <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
-        <CardDescription className="mt-1">Vencimento: {new Date(product.expirationDate).toLocaleDateString()}</CardDescription>
+        <CardDescription className={cn("mt-1 font-medium", expirationDateColor)}>
+            Vencimento: {formattedExpirationDate}
+        </CardDescription>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>

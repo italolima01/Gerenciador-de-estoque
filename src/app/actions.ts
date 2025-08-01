@@ -90,10 +90,29 @@ export async function updateProductsAndGetStatus(
     const statusUpdates = await getProductsWithStatus(productsToRecalculate);
 
     // Merge the new statuses back into the full product list
-    return allProductsWithUpdatedQuantities.map(p => {
+    const updatedProductsWithStatus = allProductsWithUpdatedQuantities.map(p => {
         const newStatus = statusUpdates.find(s => s.id === p.id);
-        return newStatus || p; // If a status wasn't updated, keep the old one
+        const currentFullProduct = currentProducts.find(cp => cp.id === p.id);
+        
+        if (newStatus) {
+            return { ...p, ...newStatus };
+        }
+        // If no new status was generated, it means it wasn't in the list to be recalculated.
+        // We need to find its old status from the original `currentProducts` list.
+        if (currentFullProduct) {
+            const { id, zone, restockRecommendation, confidenceLevel, ...productData } = currentFullProduct;
+            return { ...p, id, zone, restockRecommendation, confidenceLevel };
+        }
+        // Fallback for a product that somehow didn't exist before.
+        return {
+             ...p,
+             zone: 'yellow',
+             restockRecommendation: 'Status not available.',
+             confidenceLevel: 'low',
+        };
     });
+
+    return updatedProductsWithStatus;
 }
 
 
