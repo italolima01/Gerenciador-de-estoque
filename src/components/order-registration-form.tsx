@@ -212,7 +212,13 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Produto</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select 
+                                        onValueChange={(value) => {
+                                            field.onChange(value)
+                                            form.setValue(`items.${index}.quantity`, 1);
+                                        }} 
+                                        defaultValue={field.value}
+                                    >
                                     <FormControl>
                                         <SelectTrigger>
                                         <SelectValue placeholder="Selecione uma bebida" />
@@ -237,7 +243,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 <FormItem>
                                     <FormLabel>Quantidade</FormLabel>
                                     <FormControl>
-                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined} />
+                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
