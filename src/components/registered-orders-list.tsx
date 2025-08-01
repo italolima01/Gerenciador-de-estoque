@@ -24,7 +24,6 @@ import { format, parseISO } from 'date-fns';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
-  onStatusChange: (orderId: string, status: 'Pendente' | 'Concluído') => void;
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
   onOrderCancel: (order: Order) => void;
@@ -37,7 +36,7 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
@@ -114,5 +113,3 @@ export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, on
     </Table>
   );
 }
-
-    

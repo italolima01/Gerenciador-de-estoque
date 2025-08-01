@@ -54,6 +54,7 @@ export function Dashboard() {
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
+  const [isConfirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
@@ -157,11 +158,12 @@ export function Dashboard() {
       setSelectedOrderForEdit(null);
     });
   }
-
-  const handleOrderStatusChange = (orderId: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-  };
   
+  const handleOpenCompleteDialog = (order: Order) => {
+    setOrderToComplete(order);
+    setConfirmCompleteOpen(true);
+  }
+
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(async () => {
       const updatedProductQuantities: { [productId: string]: number } = {};
@@ -191,10 +193,14 @@ export function Dashboard() {
         setOrders(prev => prev.map(o => o.id === orderId ? { 
             ...o, 
             status: 'Concluído', 
-            notes: note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes 
+            notes: note ? (o.notes ? `${o.notes}\\n---\\n${note}` : note) : o.notes 
         } : o));
+        
+        // Close all dialogs related to completion
         setOrderToComplete(null);
+        setConfirmCompleteOpen(false);
         setAddNoteDialogOpen(false);
+        
          toast({
             title: "Pedido Concluído!",
             description: `O pedido foi marcado como concluído.`,
@@ -330,11 +336,10 @@ export function Dashboard() {
               <CardContent className="pt-6">
                 <RegisteredOrdersList 
                     orders={orders}
-                    onStatusChange={handleOrderStatusChange}
                     onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                     onOrderEdit={setSelectedOrderForEdit}
                     onOrderCancel={setSelectedOrderForCancel}
-                    onMarkAsComplete={setOrderToComplete}
+                    onMarkAsComplete={handleOpenCompleteDialog}
                 />
               </CardContent>
             </Card>
@@ -407,16 +412,22 @@ export function Dashboard() {
         />
       )}
 
-      {orderToComplete && !isAddNoteDialogOpen && (
+      {orderToComplete && (
         <ConfirmCompletionDialog
-            isOpen={!!orderToComplete}
-            onOpenChange={() => setOrderToComplete(null)}
+            isOpen={isConfirmCompleteOpen}
+            onOpenChange={() => {
+                setConfirmCompleteOpen(false);
+                setOrderToComplete(null);
+            }}
             onConfirmWithoutNote={() => handleCompleteOrder(orderToComplete.id)}
-            onConfirmWithNote={() => setAddNoteDialogOpen(true)}
+            onConfirmWithNote={() => {
+                setConfirmCompleteOpen(false);
+                setAddNoteDialogOpen(true);
+            }}
         />
       )}
 
-      {orderToComplete && isAddNoteDialogOpen && (
+      {orderToComplete && (
         <AddNoteDialog
             isOpen={isAddNoteDialogOpen}
             onOpenChange={() => {
@@ -429,5 +440,3 @@ export function Dashboard() {
       )}
     </>
   );
-
-    

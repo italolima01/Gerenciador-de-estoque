@@ -84,7 +84,7 @@ export function AddNoteDialog({ isOpen, onOpenChange, onSave, isPending }: AddNo
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancelar</Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar Anotação e Concluir
@@ -96,5 +96,3 @@ export function AddNoteDialog({ isOpen, onOpenChange, onSave, isPending }: AddNo
     </Dialog>
   );
 }
-
-    
