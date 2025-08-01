@@ -36,6 +36,7 @@ import type { Product, Order, OrderItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { SelectProductDialog } from './select-product-dialog';
+import { SelectQuantityDialog } from './select-quantity-dialog';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -71,6 +72,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
+  const [productForQuantity, setProductForQuantity] = React.useState<Product | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -154,8 +156,13 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   }
   
   const handleSelectProduct = (product: Product) => {
-    append({ productId: product.id, quantity: 1 });
     setSelectProductOpen(false);
+    setProductForQuantity(product);
+  };
+
+  const handleConfirmQuantity = (productId: string, quantity: number) => {
+    append({ productId, quantity });
+    setProductForQuantity(null);
   };
 
   const availableProducts = products.filter(p => p.quantity > 0 && !watchItems.some(item => item.productId === p.id));
@@ -344,6 +351,13 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
         products={availableProducts}
         onSelectProduct={handleSelectProduct}
       />
+    <SelectQuantityDialog
+        isOpen={!!productForQuantity}
+        onOpenChange={() => setProductForQuantity(null)}
+        product={productForQuantity}
+        onConfirm={handleConfirmQuantity}
+        isPending={isPending}
+    />
     </>
   );
 }

@@ -27,6 +27,7 @@ import type { Product, Order } from '@/lib/types';
 import { Separator } from './ui/separator';
 import { ConfirmOrderDialog } from './confirm-order-dialog';
 import { SelectProductDialog } from './select-product-dialog';
+import { SelectQuantityDialog } from './select-quantity-dialog';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -60,6 +61,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const [orderToConfirm, setOrderToConfirm] = React.useState<FormValues | null>(null);
   const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
+  const [productForQuantity, setProductForQuantity] = React.useState<Product | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -105,8 +107,13 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   }
   
   const handleSelectProduct = (product: Product) => {
-    append({ productId: product.id, quantity: 1 });
     setSelectProductOpen(false);
+    setProductForQuantity(product);
+  };
+  
+  const handleConfirmQuantity = (productId: string, quantity: number) => {
+    append({ productId, quantity });
+    setProductForQuantity(null);
   };
 
   function handleFinalSubmit() {
@@ -327,6 +334,13 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         onOpenChange={setSelectProductOpen}
         products={availableProducts}
         onSelectProduct={handleSelectProduct}
+    />
+     <SelectQuantityDialog
+        isOpen={!!productForQuantity}
+        onOpenChange={() => setProductForQuantity(null)}
+        product={productForQuantity}
+        onConfirm={handleConfirmQuantity}
+        isPending={isPending}
     />
     </>
   );
