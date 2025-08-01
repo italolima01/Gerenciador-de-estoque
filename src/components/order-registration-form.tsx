@@ -76,16 +76,15 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   
   const availableProducts = products.filter(p => p.quantity > 0);
   const watchItems = form.watch('items');
-  const formValues = form.watch();
 
   const totalOrderValue = React.useMemo(() => {
-    return (formValues.items || []).reduce((total, item) => {
+    return watchItems.reduce((total, item) => {
         const product = products.find(p => p.id === item.productId);
         const price = product?.price || 0;
         const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
     }, 0);
-  }, [formValues, products]);
+  }, [watchItems, products]);
 
   function handleConfirmation(values: FormValues) {
     // Validate stock availability before opening confirmation
@@ -135,7 +134,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   return (
     <>
     <Form {...form}>
-    <form onSubmit={form.handleSubmit(handleConfirmation)} className="space-y-8">
+    <form onSubmit={form.handleSubmit(handleConfirmation)} className="space-y-8 p-1">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
                 control={form.control}
@@ -228,7 +227,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     <Select 
                                         onValueChange={(value) => {
                                             field.onChange(value)
-                                            form.setValue(`items.${index}.quantity`, 1, { shouldDirty: true, shouldTouch: true });
+                                            form.setValue(`items.${index}.quantity`, 1, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
                                         }} 
                                         defaultValue={field.value}
                                     >

@@ -14,7 +14,6 @@ import { SellProductDialog } from '@/components/sell-product-dialog';
 import { RestockAlertDialog } from '@/components/restock-alert-dialog';
 import { Logo } from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { OrderRegistrationForm } from './order-registration-form';
 import { RegisteredOrdersList } from './registered-orders-list';
 import { OrderDetailsDialog } from './order-details-dialog';
 import { Input } from './ui/input';
@@ -25,6 +24,7 @@ import { EditOrderSheet } from './edit-order-sheet';
 import { CancelOrderDialog } from './cancel-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
+import { RegisterOrderSheet } from './register-order-sheet';
 
 
 // Debounce helper function
@@ -47,6 +47,7 @@ export function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
+  const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
   const [selectedProductForDelete, setSelectedProductForDelete] = useState<ProductWithStatus | null>(null);
@@ -125,6 +126,7 @@ export function Dashboard() {
         status: 'Pendente',
       };
       setOrders(prev => [newOrder, ...prev]);
+      setRegisterOrderSheetOpen(false);
     });
   };
 
@@ -248,25 +250,36 @@ export function Dashboard() {
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
             <Logo />
-             <Button onClick={() => setAddSheetOpen(true)} className='hidden sm:inline-flex'>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Produto
-            </Button>
+             <div className="hidden sm:flex items-center gap-2">
+                <Button onClick={() => setRegisterOrderSheetOpen(true)} variant="outline">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Registrar Pedido
+                </Button>
+                <Button onClick={() => setAddSheetOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Produto
+                </Button>
+            </div>
         </div>
       </header>
         
       <main className="container mx-auto p-4 md:p-6">
-        <Tabs defaultValue="inventory">
+        <Tabs defaultValue="orders">
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
-              <TabsTrigger value="inventory">Estoque</TabsTrigger>
-              <TabsTrigger value="registerOrder">Registrar Pedido</TabsTrigger>
               <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
+              <TabsTrigger value="inventory">Estoque</TabsTrigger>
             </TabsList>
-             <Button onClick={() => setAddSheetOpen(true)} className='sm:hidden'>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar
-            </Button>
+             <div className='sm:hidden flex items-center gap-2'>
+                 <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Pedido
+                </Button>
+                <Button onClick={() => setAddSheetOpen(true)} size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Produto
+                </Button>
+            </div>
           </div>
           <TabsContent value="inventory">
             <div className="mb-6">
@@ -312,21 +325,6 @@ export function Dashboard() {
               </div>
             )}
           </TabsContent>
-          <TabsContent value="registerOrder">
-             <div className="mb-6">
-                <h2 className="font-headline text-3xl font-bold tracking-tight">Registro de Pedidos</h2>
-                <p className="text-muted-foreground">Crie um novo pedido para um cliente.</p>
-            </div>
-            <Card className="bg-card/50">
-              <CardContent className="pt-6">
-                <OrderRegistrationForm 
-                    products={products}
-                    onSubmit={handleOrderSubmit}
-                    isPending={isPending}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
            <TabsContent value="orders">
              <div className="mb-6">
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Pedidos Registrados</h2>
@@ -351,6 +349,14 @@ export function Dashboard() {
         isOpen={isAddSheetOpen}
         onOpenChange={setAddSheetOpen}
         onProductAdd={handleAddProduct}
+        isPending={isPending}
+      />
+      
+      <RegisterOrderSheet
+        isOpen={isRegisterOrderSheetOpen}
+        onOpenChange={setRegisterOrderSheetOpen}
+        products={products}
+        onOrderSubmit={handleOrderSubmit}
         isPending={isPending}
       />
 
@@ -406,8 +412,7 @@ export function Dashboard() {
         <CancelOrderDialog
           order={selectedOrderForCancel}
           isOpen={!!selectedOrderForCancel}
-          onOpenChange={() => setSelectedOrderForCancel(null)}
-          onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
+          onOpenChange={() => handleCancelOrder(selectedOrderForCancel)}
           isPending={isPending}
         />
       )}
