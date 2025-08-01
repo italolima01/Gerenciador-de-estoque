@@ -243,7 +243,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 <FormItem>
                                     <FormLabel>Quantidade</FormLabel>
                                     <FormControl>
-                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined} onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))} />
+                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined} onChange={(e) => field.onChange(e.target.valueAsNumber || 0)} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -324,3 +324,5 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     </>
   );
 }
+
+    
