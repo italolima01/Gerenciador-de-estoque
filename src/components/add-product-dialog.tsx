@@ -43,7 +43,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface AddProductDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onProductAdd: (product: Product) => void;
+  onProductAdd: (product: Omit<Product, 'id'>) => void;
   isPending: boolean;
 }
 
@@ -65,16 +65,15 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   }, [isOpen, form]);
 
   function onSubmit(values: FormValues) {
-    const newProduct: Product = {
+    const newProductData: Omit<Product, 'id'> = {
       ...values,
-      id: `prod_${Date.now()}`,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
       averageDailySales: 0, // Default value
       daysToRestock: 0, // Default value
       imageUrl: 'https://placehold.co/400x400',
       imageHint: 'bottle drink',
     };
-    onProductAdd(newProduct);
+    onProductAdd(newProductData);
   }
 
   return (
@@ -183,3 +182,5 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     </Dialog>
   );
 }
+
+    

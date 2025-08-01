@@ -67,20 +67,23 @@ export function Dashboard() {
     loadData();
   }, []);
 
-  const handleAddProduct = (newProduct: Product) => {
+  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(async () => {
-      const { id, ...productData } = newProduct;
-      const newProductId = await addFsProduct(productData);
+      const newProductId = await addFsProduct(newProductData);
       
       const newProductWithStatus: ProductWithStatus = { 
-        ...newProduct, 
+        ...newProductData, 
         id: newProductId,
-        zone: 'green',
+        zone: 'green', // Default status for new products
         restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
         confidenceLevel: 'low'
       };
       setProducts(prev => [newProductWithStatus, ...prev]);
       setAddDialogOpen(false);
+      toast({
+            title: "Produto Adicionado!",
+            description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
+      });
     });
   };
 
@@ -456,3 +459,5 @@ export function Dashboard() {
       )}
     </>
   );
+
+    
