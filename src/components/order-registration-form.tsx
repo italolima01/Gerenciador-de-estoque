@@ -64,7 +64,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     resolver: zodResolver(formSchema),
     defaultValues: {
       customerName: '',
-      items: [{ productId: '', quantity: 1 }],
+      items: [],
       notes: '',
     },
   });
@@ -76,15 +76,16 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   
   const availableProducts = products.filter(p => p.quantity > 0);
   const watchItems = form.watch('items');
+  const formValues = form.watch();
 
   const totalOrderValue = React.useMemo(() => {
-    return watchItems.reduce((total, item) => {
+    return (formValues.items || []).reduce((total, item) => {
         const product = products.find(p => p.id === item.productId);
         const price = product?.price || 0;
         const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
     }, 0);
-  }, [watchItems, products]);
+  }, [formValues, products]);
 
   function handleConfirmation(values: FormValues) {
     // Validate stock availability before opening confirmation
@@ -125,7 +126,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     setOrderToConfirm(null);
     form.reset({
         customerName: '',
-        items: [{ productId: '', quantity: 1 }],
+        items: [],
         notes: '',
         deliveryDate: undefined
     });
@@ -194,8 +195,20 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         
         <div>
             <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
-            <div className="space-y-4">
-                {fields.map((field, index) => {
+             <div className="space-y-4">
+              {fields.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => append({ productId: '', quantity: 1 })}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Produto
+                  </Button>
+                </div>
+              ) : (
+                fields.map((field, index) => {
                       const selectedProductId = watchItems?.[index]?.productId;
                       const selectedProduct = availableProducts.find(p => p.id === selectedProductId);
                       const maxQuantity = selectedProduct?.quantity ?? 0;
@@ -215,7 +228,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     <Select 
                                         onValueChange={(value) => {
                                             field.onChange(value)
-                                            form.setValue(`items.${index}.quantity`, 1);
+                                            form.setValue(`items.${index}.quantity`, 1, { shouldDirty: true, shouldTouch: true });
                                         }} 
                                         defaultValue={field.value}
                                     >
@@ -274,21 +287,23 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 variant="destructive"
                                 size="icon"
                                 onClick={() => remove(index)}
-                                disabled={fields.length <= 1}
                                 >
                                 <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
                     )
-                })}
+                })
+              )}
             </div>
-            <div className="flex justify-end items-center mt-4">
-                <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
-                    <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
+            {fields.length > 0 && (
+                <div className="flex justify-end items-center mt-4">
+                    <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
+                        <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
+                    </div>
                 </div>
-            </div>
+            )}
             <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
         </div>
 
