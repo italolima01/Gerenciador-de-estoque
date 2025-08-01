@@ -81,7 +81,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     return watchItems.reduce((total, item) => {
         const product = products.find(p => p.id === item.productId);
         const price = product?.price || 0;
-        const quantity = item.quantity || 0;
+        const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
     }, 0);
   }, [watchItems, products]);
@@ -200,7 +200,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       const selectedProduct = availableProducts.find(p => p.id === selectedProductId);
                       const maxQuantity = selectedProduct?.quantity ?? 0;
                       const price = selectedProduct?.price ?? 0;
-                      const quantity = watchItems?.[index]?.quantity ?? 0;
+                      const quantity = Number(watchItems?.[index]?.quantity) ?? 0;
                       const subtotal = price * quantity;
 
                     return (
@@ -237,7 +237,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 <FormItem>
                                     <FormLabel>Quantidade</FormLabel>
                                     <FormControl>
-                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined}/>
+                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined} onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
