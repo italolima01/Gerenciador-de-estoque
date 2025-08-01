@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import type { Product, Order, OrderItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
+import { SelectProductDialog } from './select-product-dialog';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -69,6 +70,7 @@ function formatCurrency(value: number) {
 export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderUpdate, isPending }: EditOrderSheetProps) {
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
+  const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -81,15 +83,17 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   });
   
   React.useEffect(() => {
-    form.reset({
-      customerName: order.customerName,
-      deliveryDate: parseISO(order.deliveryDate),
-      items: order.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
-      notes: order.notes || '',
-    });
+    if (isOpen) {
+      form.reset({
+        customerName: order.customerName,
+        deliveryDate: parseISO(order.deliveryDate),
+        items: order.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+        notes: order.notes || '',
+      });
+    }
   }, [order, form, isOpen]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -148,8 +152,17 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
         description: "As alterações no pedido foram salvas com sucesso.",
     });
   }
+  
+  const handleSelectProduct = (product: Product) => {
+    append({ productId: product.id, quantity: 1 });
+    setSelectProductOpen(false);
+  };
+
+  const availableProducts = products.filter(p => p.quantity > 0 && !watchItems.some(item => item.productId === p.id));
+
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col w-full sm:max-w-2xl">
         <SheetHeader>
@@ -203,7 +216,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                             toYear={new Date().getFullYear() + 1}
                             selected={field.value}
                             onSelect={(date) => {
-                            field.onChange(date);
+                            if(date) field.onChange(date);
                             setCalendarOpen(false);
                             }}
                             disabled={(date) => date < new Date()}
@@ -220,54 +233,25 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                 <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
                 <div className="space-y-4">
                     {fields.map((field, index) => {
-                          const selectedProductId = watchItems?.[index]?.productId;
-                          const availableStock = getAvailableStock(selectedProductId);
-                          const price = products.find(p => p.id === selectedProductId)?.price ?? 0;
+                          const selectedProduct = products.find(p => p.id === field.productId);
+                          const availableStock = getAvailableStock(field.productId);
+                          const price = selectedProduct?.price ?? 0;
                           const quantity = watchItems?.[index]?.quantity ?? 0;
                           const subtotal = price * quantity;
 
                         return (
                             <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg bg-muted/50">
-                               <div className="flex-1 grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.productId`}
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Produto</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                            <SelectValue placeholder="Selecione um item" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {products.map(product => {
-                                                const isSelectedElsewhere = watchItems.some((item, i) => i !== index && item.productId === product.id);
-                                                const hasStock = getAvailableStock(product.id) > 0;
-                                                const isCurrentProduct = field.value === product.id;
-
-                                                if ((hasStock && !isSelectedElsewhere) || isCurrentProduct) {
-                                                    return (
-                                                         <SelectItem key={product.id} value={product.id}>
-                                                            {product.name} (Disponível: {getAvailableStock(product.id)})
-                                                        </SelectItem>
-                                                    )
-                                                }
-                                                return null;
-                                            })}
-                                        </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                               <div className="flex-1 grid grid-cols-[1fr_auto] gap-4 items-center">
+                                  <div>
+                                    <p className="font-semibold">{selectedProduct?.name}</p>
+                                    <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
+                                  </div>
                                  <FormField
                                     control={form.control}
                                     name={`items.${index}.quantity`}
                                     render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Quantidade</FormLabel>
+                                    <FormItem className="w-24">
+                                        <FormLabel>Qtd.</FormLabel>
                                         <FormControl>
                                             <Input type="number" {...field} min={1} max={availableStock > 0 ? availableStock : undefined}/>
                                         </FormControl>
@@ -285,29 +269,43 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                 variant="destructive"
                                 size="icon"
                                 onClick={() => remove(index)}
-                                disabled={fields.length <= 1}
                                 >
                                 <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         )
                     })}
+                     {fields.length === 0 && (
+                        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
+                            <p className="text-muted-foreground mb-4">Nenhum item no pedido.</p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSelectProductOpen(true)}
+                            >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Adicionar Produto
+                            </Button>
+                        </div>
+                    )}
                 </div>
-                <div className="flex justify-between items-center mt-4">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => append({ productId: '', quantity: 1 })}
-                    >
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Adicionar Item
-                    </Button>
-                    <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
-                        <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
-                    </div>
-                </div>
+                {fields.length > 0 && (
+                  <div className="flex justify-between items-center mt-4">
+                      <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectProductOpen(true)}
+                      >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Adicionar Produto
+                      </Button>
+                      <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
+                          <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
+                      </div>
+                  </div>
+                )}
                  <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
             </div>
              <FormField
@@ -340,7 +338,12 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
         </SheetFooter>
       </SheetContent>
     </Sheet>
+     <SelectProductDialog
+        isOpen={isSelectProductOpen}
+        onOpenChange={setSelectProductOpen}
+        products={availableProducts}
+        onSelectProduct={handleSelectProduct}
+      />
+    </>
   );
 }
-
-    

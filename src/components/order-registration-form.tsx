@@ -22,11 +22,11 @@ import {
 } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { Product, Order } from '@/lib/types';
 import { Separator } from './ui/separator';
 import { ConfirmOrderDialog } from './confirm-order-dialog';
+import { SelectProductDialog } from './select-product-dialog';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -59,6 +59,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const [orderToConfirm, setOrderToConfirm] = React.useState<FormValues | null>(null);
+  const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -74,8 +75,9 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     name: "items",
   });
   
-  const availableProducts = products.filter(p => p.quantity > 0);
   const watchItems = form.watch('items');
+
+  const availableProducts = products.filter(p => p.quantity > 0 && !watchItems.some(item => item.productId === p.id));
 
   const totalOrderValue = React.useMemo(() => {
     return watchItems.reduce((total, item) => {
@@ -101,6 +103,11 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     }
     setOrderToConfirm(values);
   }
+  
+  const handleSelectProduct = (product: Product) => {
+    append({ productId: product.id, quantity: 1 });
+    setSelectProductOpen(false);
+  };
 
   function handleFinalSubmit() {
     if (!orderToConfirm) return;
@@ -178,7 +185,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                         toYear={new Date().getFullYear() + 1}
                         selected={field.value}
                         onSelect={(date) => {
-                          field.onChange(date);
+                          if (date) field.onChange(date);
                           setCalendarOpen(false);
                         }}
                         disabled={(date) => date < new Date()}
@@ -197,10 +204,11 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
              <div className="space-y-4">
               {fields.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
+                   <p className="text-muted-foreground mb-4">Nenhum item no pedido.</p>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => append({ productId: '', quantity: 1 })}
+                    onClick={() => setSelectProductOpen(true)}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Produto
@@ -208,8 +216,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                 </div>
               ) : (
                 fields.map((field, index) => {
-                      const selectedProductId = watchItems?.[index]?.productId;
-                      const selectedProduct = availableProducts.find(p => p.id === selectedProductId);
+                      const selectedProduct = products.find(p => p.id === field.productId);
                       const maxQuantity = selectedProduct?.quantity ?? 0;
                       const price = selectedProduct?.price ?? 0;
                       const quantity = watchItems?.[index]?.quantity ?? 0;
@@ -217,56 +224,30 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
 
                     return (
                         <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
-                            <div className="flex-1 grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name={`items.${index}.productId`}
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Produto</FormLabel>
-                                    <Select 
-                                        onValueChange={(value) => {
-                                            field.onChange(value)
-                                            form.setValue(`items.${index}.quantity`, 1, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-                                        }} 
-                                        defaultValue={field.value}
-                                    >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                        <SelectValue placeholder="Selecione um item" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {availableProducts.map(product => (
-                                        <SelectItem key={product.id} value={product.id} disabled={watchItems.some((item, i) => i !== index && item.productId === product.id)}>
-                                            {product.name} (Estoque: {product.quantity})
-                                        </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name={`items.${index}.quantity`}
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Quantidade</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            {...field}
-                                            min={1}
-                                            max={maxQuantity > 0 ? maxQuantity : undefined}
-                                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
+                           <div className="flex-1 grid grid-cols-[1fr_auto] gap-4 items-center">
+                                <div>
+                                    <p className="font-semibold">{selectedProduct?.name}</p>
+                                    <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name={`items.${index}.quantity`}
+                                    render={({ field }) => (
+                                    <FormItem className="w-24">
+                                        <FormLabel>Qtd.</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                {...field}
+                                                min={1}
+                                                max={maxQuantity > 0 ? maxQuantity : undefined}
+                                                onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                             </div>
                              <div className="w-32 text-right">
                                 <FormLabel>Subtotal</FormLabel>
@@ -291,10 +272,10 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => append({ productId: '', quantity: 1 })}
+                        onClick={() => setSelectProductOpen(true)}
                     >
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Adicionar Item
+                        Adicionar Produto
                     </Button>
                     <div className="text-right">
                         <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
@@ -341,8 +322,12 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
             isPending={isPending}
         />
     )}
+    <SelectProductDialog
+        isOpen={isSelectProductOpen}
+        onOpenChange={setSelectProductOpen}
+        products={availableProducts}
+        onSelectProduct={handleSelectProduct}
+    />
     </>
   );
 }
-
-    
