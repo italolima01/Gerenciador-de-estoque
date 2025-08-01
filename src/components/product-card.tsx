@@ -57,12 +57,12 @@ function getExpirationDateColor(expirationDate: string): string {
     const daysUntilExpiration = differenceInDays(expiry, today);
 
     if (daysUntilExpiration <= 14) {
-        return 'text-destructive'; // Red
+        return 'text-destructive'; // Red for 14 days or less
     }
     if (daysUntilExpiration <= 30) {
-        return 'text-yellow-600'; // Yellow
+        return 'text-yellow-600'; // Yellow for 15-30 days
     }
-    return 'text-muted-foreground'; // Green (or default)
+    return 'text-green-600'; // Green for more than 30 days
 }
 
 
