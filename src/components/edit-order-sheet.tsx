@@ -238,7 +238,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
-                                            <SelectValue placeholder="Selecione uma bebida" />
+                                            <SelectValue placeholder="Selecione um item" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>

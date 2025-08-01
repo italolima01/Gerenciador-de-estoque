@@ -233,7 +233,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     >
                                     <FormControl>
                                         <SelectTrigger>
-                                        <SelectValue placeholder="Selecione uma bebida" />
+                                        <SelectValue placeholder="Selecione um item" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
