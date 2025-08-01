@@ -2,8 +2,8 @@
 'use server';
 
 import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
-import { generateRestockAlert, type GenerateRestockAlertOutput } from '@/ai/flows/generate-restock-alert';
-import { generateMultipleRestockAlerts, type GenerateMultipleRestockAlertsOutput } from '@/ai/flows/generate-multiple-restock-alerts';
+import { type GenerateRestockAlertOutput } from '@/ai/flows/generate-restock-alert';
+import { generateMultipleRestockAlerts } from '@/ai/flows/generate-multiple-restock-alerts';
 import { products as mockProducts } from '@/lib/data';
 import type { Product, ProductWithStatus } from '@/lib/types';
 
@@ -56,15 +56,9 @@ export async function getInitialProducts(): Promise<ProductWithStatus[]> {
   return getProductsWithStatus(mockProducts);
 }
 
-export async function getProductStatus(product: Product): Promise<GenerateRestockAlertOutput> {
-   const alert = await generateRestockAlert({
-      productName: product.name,
-      currentStock: product.quantity,
-      averageDailySales: product.averageDailySales,
-      daysToRestock: product.daysToRestock,
-      expirationDate: product.expirationDate,
-    });
-    return alert;
+export async function getProductStatus(product: Product): Promise<ProductWithStatus> {
+   const results = await getProductsWithStatus([product]);
+   return results[0];
 }
 
 export async function updateProductsAndGetStatus(
