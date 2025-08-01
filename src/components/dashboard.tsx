@@ -20,6 +20,7 @@ import { OrderDetailsDialog } from './order-details-dialog';
 import { Input } from './ui/input';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from './ui/card';
 
 // Debounce helper function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -232,22 +233,30 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Registro de Pedidos</h2>
                 <p className="text-muted-foreground">Crie um novo pedido para um cliente.</p>
             </div>
-             <OrderRegistrationForm 
-                products={products}
-                onSubmit={handleOrderSubmit}
-                isPending={isPending}
-            />
+            <Card>
+              <CardContent className="pt-6">
+                <OrderRegistrationForm 
+                    products={products}
+                    onSubmit={handleOrderSubmit}
+                    isPending={isPending}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
            <TabsContent value="orders">
              <div className="mb-6">
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Pedidos Registrados</h2>
                 <p className="text-muted-foreground">Visualize e gerencie todos os pedidos dos clientes.</p>
             </div>
-             <RegisteredOrdersList 
-                orders={orders}
-                onStatusChange={handleOrderStatusChange}
-                onOrderSelect={setSelectedOrderForDetails}
-            />
+            <Card>
+              <CardContent className="pt-6">
+                <RegisteredOrdersList 
+                    orders={orders}
+                    onStatusChange={handleOrderStatusChange}
+                    onOrderSelect={setSelectedOrderForDetails}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

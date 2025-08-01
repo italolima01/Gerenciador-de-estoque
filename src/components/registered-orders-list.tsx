@@ -3,10 +3,6 @@
 
 import type { Order } from '@/lib/types';
 import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import {
   Table,
   TableHeader,
   TableBody,
@@ -50,64 +46,60 @@ export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect }: 
   }
 
   return (
-    <Card>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead className="hidden sm:table-cell">Data do Pedido</TableHead>
-              <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id} onClick={() => onOrderSelect(order)} className="cursor-pointer">
-                <TableCell>
-                  <div className="font-medium">{order.customerName}</div>
-                  <div className="text-sm text-muted-foreground md:hidden">
-                    Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  {format(parseISO(order.createdAt), 'dd/MM/yyyy')}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusVariantMap[order.status]}>
-                    {order.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Mais ações</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Concluído')}>
-                            Marcar como Concluído
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Pendente')}>
-                            Marcar como Pendente
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Cancelado')}>
-                            Cancelar Pedido
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Cliente</TableHead>
+          <TableHead className="hidden sm:table-cell">Data do Pedido</TableHead>
+          <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Ações</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {orders.map((order) => (
+          <TableRow key={order.id} onClick={() => onOrderSelect(order)} className="cursor-pointer">
+            <TableCell>
+              <div className="font-medium">{order.customerName}</div>
+              <div className="text-sm text-muted-foreground md:hidden">
+                Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+              </div>
+            </TableCell>
+            <TableCell className="hidden sm:table-cell">
+              {format(parseISO(order.createdAt), 'dd/MM/yyyy')}
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+              {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+            </TableCell>
+            <TableCell>
+              <Badge variant={statusVariantMap[order.status]}>
+                {order.status}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button size="icon" variant="ghost">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Mais ações</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Concluído')}>
+                        Marcar como Concluído
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Pendente')}>
+                        Marcar como Pendente
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Cancelado')}>
+                        Cancelar Pedido
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
