@@ -36,8 +36,6 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
-  averageDailySales: z.coerce.number().min(0, { message: 'A média de vendas não pode ser negativa.' }),
-  daysToRestock: z.coerce.number().int().min(0, { message: 'Os dias para reabastecer não podem ser negativos.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,8 +54,6 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
     defaultValues: {
       name: '',
       quantity: 0,
-      averageDailySales: 0,
-      daysToRestock: 0,
     },
   });
 
@@ -66,6 +62,8 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
       ...values,
       id: `prod_${Date.now()}`,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
+      averageDailySales: 0, // Default value
+      daysToRestock: 0, // Default value
       imageUrl: 'https://placehold.co/400x400',
       imageHint: 'bottle drink',
     };
@@ -143,32 +141,6 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="averageDailySales"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Média de Vendas Diárias</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.1" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="daysToRestock"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dias para Reabastecer</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
