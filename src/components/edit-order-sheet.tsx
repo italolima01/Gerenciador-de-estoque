@@ -100,7 +100,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
     return watchItems.reduce((total, item) => {
         const product = products.find(p => p.id === item.productId);
         const price = product?.price || 0;
-        const quantity = item.quantity || 0;
+        const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
     }, 0);
   }, [watchItems, products]);
@@ -342,3 +342,5 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
     </Sheet>
   );
 }
+
+    
