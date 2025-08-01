@@ -22,6 +22,7 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
+import { CancelOrderDialog } from './cancel-order-dialog';
 
 // Debounce helper function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -48,6 +49,7 @@ export function Dashboard() {
   const [selectedProductForDelete, setSelectedProductForDelete] = useState<ProductWithStatus | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -163,6 +165,38 @@ export function Dashboard() {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
   
+  const handleCancelOrder = (orderToCancel: Order) => {
+     startTransition(async () => {
+      // Re-add stock
+      const productQuantityChanges: {[productId: string]: number} = {};
+      for (const item of orderToCancel.items) {
+          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
+      }
+      const updatedProducts = await Promise.all(
+          products.map(async (p) => {
+              if (productQuantityChanges[p.id]) {
+                  const updatedQuantity = p.quantity + productQuantityChanges[p.id];
+                  const updatedProductBase = { ...p, quantity: updatedQuantity };
+                  const status = await getProductStatus(updatedProductBase);
+                  return { ...updatedProductBase, ...status };
+              }
+              return p;
+          })
+      );
+      setProducts(updatedProducts);
+
+      // Update order status
+      setOrders(prev => prev.map(o => o.id === orderToCancel.id ? { ...o, status: 'Cancelado' } : o));
+      
+      setSelectedOrderForCancel(null);
+
+      toast({
+          title: "Pedido Cancelado",
+          description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
+      });
+    });
+  }
+
   const allProductNames = useMemo(() => products.map(p => p.name), [products]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -293,6 +327,7 @@ export function Dashboard() {
                     onStatusChange={handleOrderStatusChange}
                     onOrderSelect={setSelectedOrderForDetails}
                     onOrderEdit={setSelectedOrderForEdit}
+                    onOrderCancel={setSelectedOrderForCancel}
                 />
               </CardContent>
             </Card>
@@ -350,6 +385,16 @@ export function Dashboard() {
           isOpen={!!selectedOrderForEdit}
           onOpenChange={() => setSelectedOrderForEdit(null)}
           onOrderUpdate={handleOrderUpdate}
+          isPending={isPending}
+        />
+      )}
+
+      {selectedOrderForCancel && (
+        <CancelOrderDialog
+          order={selectedOrderForCancel}
+          isOpen={!!selectedOrderForCancel}
+          onOpenChange={() => setSelectedOrderForCancel(null)}
+          onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
           isPending={isPending}
         />
       )}
