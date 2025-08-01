@@ -18,6 +18,8 @@ import { OrderRegistrationForm } from './order-registration-form';
 import { RegisteredOrdersList } from './registered-orders-list';
 import { OrderDetailsDialog } from './order-details-dialog';
 import { Input } from './ui/input';
+import { DeleteProductDialog } from './delete-product-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 // Debounce helper function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -41,11 +43,13 @@ export function Dashboard() {
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
+  const [selectedProductForDelete, setSelectedProductForDelete] = useState<ProductWithStatus | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   useEffect(() => {
     getInitialProducts().then((initialProducts) => {
@@ -60,7 +64,6 @@ export function Dashboard() {
       const status = await getProductStatus(newProduct);
       const newProductWithStatus = { ...newProduct, ...status };
       setProducts(prev => [newProductWithStatus, ...prev]);
-      // After adding, update the filtered list to include the new product
       setFilteredProductNames(prev => prev ? [...prev, newProduct.name] : [newProduct.name]);
       setAddSheetOpen(false);
     });
@@ -76,6 +79,17 @@ export function Dashboard() {
       const status = await getProductStatus(updatedProductBase);
       setProducts(prev => prev.map(p => p.id === product.id ? {...updatedProductBase, ...status} : p));
       setSelectedProductForSale(null);
+    });
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    startTransition(() => {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        setSelectedProductForDelete(null);
+        toast({
+            title: "Produto Excluído",
+            description: "O produto foi removido do seu inventário.",
+        });
     });
   };
   
@@ -207,6 +221,7 @@ export function Dashboard() {
                     product={product}
                     onSellClick={() => setSelectedProductForSale(product)}
                     onAlertClick={() => setSelectedProductForAlert(product)}
+                    onDeleteClick={() => setSelectedProductForDelete(product)}
                   />
                 ))}
               </div>
@@ -259,6 +274,16 @@ export function Dashboard() {
           product={selectedProductForAlert}
           isOpen={!!selectedProductForAlert}
           onOpenChange={() => setSelectedProductForAlert(null)}
+        />
+      )}
+
+       {selectedProductForDelete && (
+        <DeleteProductDialog
+          product={selectedProductForDelete}
+          isOpen={!!selectedProductForDelete}
+          onOpenChange={() => setSelectedProductForDelete(null)}
+          onDelete={() => handleDeleteProduct(selectedProductForDelete.id)}
+          isPending={isPending}
         />
       )}
 

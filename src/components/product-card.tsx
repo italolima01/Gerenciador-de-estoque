@@ -1,7 +1,8 @@
+
 'use client';
 
 import Image from 'next/image';
-import { MoreVertical, Bell, ShoppingCart } from 'lucide-react';
+import { MoreVertical, Bell, ShoppingCart, Trash2 } from 'lucide-react';
 
 import type { ProductWithStatus } from '@/lib/types';
 import {
@@ -18,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -25,6 +27,7 @@ interface ProductCardProps {
   product: ProductWithStatus;
   onSellClick: () => void;
   onAlertClick: () => void;
+  onDeleteClick: () => void;
 }
 
 const zoneVariantMap: { [key: string]: BadgeProps['variant'] } = {
@@ -40,7 +43,7 @@ const zoneTextMap: { [key: string]: string } = {
 }
 
 
-export function ProductCard({ product, onSellClick, onAlertClick }: ProductCardProps) {
+export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick }: ProductCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg">
       <CardHeader className="p-0">
@@ -84,6 +87,11 @@ export function ProductCard({ product, onSellClick, onAlertClick }: ProductCardP
             <DropdownMenuItem onClick={onAlertClick}>
               <Bell className="mr-2 h-4 w-4" />
               <span>Ver Alerta de Compra</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Excluir Produto</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
