@@ -13,9 +13,11 @@ import type { Order } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Separator } from './ui/separator';
 import { Package, User, Calendar, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import type { Product } from '@/lib/types';
 
 interface OrderDetailsDialogProps {
   order: Order;
+  products: Product[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
@@ -26,8 +28,20 @@ const statusInfoMap: { [key in Order['status']]: { variant: BadgeProps['variant'
   Cancelado: { variant: 'destructive', Icon: XCircle },
 };
 
-export function OrderDetailsDialog({ order, isOpen, onOpenChange }: OrderDetailsDialogProps) {
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
+}
+
+export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: OrderDetailsDialogProps) {
     const statusInfo = statusInfoMap[order.status];
+    const totalOrderValue = order.items.reduce((total, item) => {
+        const product = products.find(p => p.id === item.productId);
+        return total + (product?.price || 0) * item.quantity;
+    }, 0);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -70,12 +84,25 @@ export function OrderDetailsDialog({ order, isOpen, onOpenChange }: OrderDetails
             <div>
                 <h4 className="font-semibold mb-2">Itens do Pedido</h4>
                 <div className="rounded-lg border">
-                    {order.items.map((item, index) => (
-                        <div key={item.productId} className={`flex justify-between p-3 ${index < order.items.length - 1 ? 'border-b' : ''}`}>
-                            <span>{item.productName}</span>
-                            <span className="font-medium">x {item.quantity}</span>
-                        </div>
-                    ))}
+                    {order.items.map((item, index) => {
+                        const product = products.find(p => p.id === item.productId);
+                        const subtotal = (product?.price || 0) * item.quantity;
+                        return (
+                            <div key={item.productId} className={`flex justify-between items-center p-3 ${index < order.items.length - 1 ? 'border-b' : ''}`}>
+                                <div>
+                                    <p>{item.productName}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {formatCurrency(product?.price || 0)} x {item.quantity}
+                                    </p>
+                                </div>
+                                <span className="font-medium">{formatCurrency(subtotal)}</span>
+                            </div>
+                        )
+                    })}
+                    <div className="flex justify-between items-center p-3 font-bold border-t-2">
+                        <span>Total</span>
+                        <span>{formatCurrency(totalOrderValue)}</span>
+                    </div>
                 </div>
             </div>
 

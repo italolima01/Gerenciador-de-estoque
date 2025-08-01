@@ -288,7 +288,7 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Registro de Pedidos</h2>
                 <p className="text-muted-foreground">Crie um novo pedido para um cliente.</p>
             </div>
-            <Card>
+            <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <OrderRegistrationForm 
                     products={products}
@@ -303,12 +303,12 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Pedidos Registrados</h2>
                 <p className="text-muted-foreground">Visualize e gerencie todos os pedidos dos clientes.</p>
             </div>
-            <Card>
+            <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <RegisteredOrdersList 
                     orders={orders}
                     onStatusChange={handleOrderStatusChange}
-                    onOrderSelect={setSelectedOrderForDetails}
+                    onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                     onOrderEdit={setSelectedOrderForEdit}
                     onOrderCancel={setSelectedOrderForCancel}
                 />
@@ -356,6 +356,7 @@ export function Dashboard() {
       {selectedOrderForDetails && (
         <OrderDetailsDialog
           order={selectedOrderForDetails}
+          products={products}
           isOpen={!!selectedOrderForDetails}
           onOpenChange={() => setSelectedOrderForDetails(null)}
         />

@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import type { Product, Order, OrderItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from './ui/separator';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -58,6 +59,13 @@ interface EditOrderSheetProps {
   isPending: boolean;
 }
 
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
+}
+
 export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderUpdate, isPending }: EditOrderSheetProps) {
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
@@ -79,7 +87,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
       items: order.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
       notes: order.notes || '',
     });
-  }, [order, form]);
+  }, [order, form, isOpen]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -87,6 +95,16 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   });
 
   const watchItems = form.watch('items');
+
+  const totalOrderValue = React.useMemo(() => {
+    return watchItems.reduce((total, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const price = product?.price || 0;
+        const quantity = item.quantity || 0;
+        return total + (price * quantity);
+    }, 0);
+  }, [watchItems, products]);
+
 
   function getAvailableStock(productId: string): number {
       const product = products.find(p => p.id === productId);
@@ -133,7 +151,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col w-full sm:max-w-xl">
+      <SheetContent className="flex flex-col w-full sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle className="font-headline">Editar Pedido</SheetTitle>
           <SheetDescription>
@@ -142,70 +160,75 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-grow space-y-4 overflow-y-auto pr-6">
-            <FormField
-              control={form.control}
-              name="customerName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Cliente</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: João da Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="deliveryDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Entrega</FormLabel>
-                  <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={'outline'}
-                          className={cn(
-                            'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Escolha uma data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        captionLayout="buttons"
-                        fromYear={new Date().getFullYear() - 1}
-                        toYear={new Date().getFullYear() + 1}
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          setCalendarOpen(false);
-                        }}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="customerName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nome do Cliente</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ex: João da Silva" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="deliveryDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Data de Entrega</FormLabel>
+                    <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={'outline'}
+                            className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                            )}
+                            >
+                            {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Escolha uma data</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            captionLayout="buttons"
+                            fromYear={new Date().getFullYear() - 1}
+                            toYear={new Date().getFullYear() + 1}
+                            selected={field.value}
+                            onSelect={(date) => {
+                            field.onChange(date);
+                            setCalendarOpen(false);
+                            }}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
              <div>
                 <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
                 <div className="space-y-4">
                     {fields.map((field, index) => {
                           const selectedProductId = watchItems?.[index]?.productId;
                           const availableStock = getAvailableStock(selectedProductId);
+                          const price = products.find(p => p.id === selectedProductId)?.price ?? 0;
+                          const quantity = watchItems?.[index]?.quantity ?? 0;
+                          const subtotal = price * quantity;
 
                         return (
                             <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg bg-muted/50">
-                                <div className="flex-1">
+                               <div className="flex-1 grid grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name={`items.${index}.productId`}
@@ -220,11 +243,11 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                         </FormControl>
                                         <SelectContent>
                                             {products.map(product => {
-                                                const currentItemInForm = watchItems.find(item => item.productId === product.id);
                                                 const isSelectedElsewhere = watchItems.some((item, i) => i !== index && item.productId === product.id);
-                                                const availableForSelection = (getAvailableStock(product.id) > 0 || currentItemInForm?.productId === product.id) && !isSelectedElsewhere;
-                                                
-                                                if(availableForSelection) {
+                                                const hasStock = getAvailableStock(product.id) > 0;
+                                                const isCurrentProduct = field.value === product.id;
+
+                                                if ((hasStock && !isSelectedElsewhere) || isCurrentProduct) {
                                                     return (
                                                          <SelectItem key={product.id} value={product.id}>
                                                             {product.name} (Disponível: {getAvailableStock(product.id)})
@@ -239,21 +262,23 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                     </FormItem>
                                     )}
                                 />
+                                 <FormField
+                                    control={form.control}
+                                    name={`items.${index}.quantity`}
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Quantidade</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} min={1} max={availableStock > 0 ? availableStock : undefined}/>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                                 </div>
-                                <div className="w-32">
-                                    <FormField
-                                        control={form.control}
-                                        name={`items.${index}.quantity`}
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Quantidade</FormLabel>
-                                            <FormControl>
-                                                <Input type="number" {...field} min={1} max={availableStock > 0 ? availableStock : undefined}/>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
+                                <div className="w-32 text-right">
+                                    <FormLabel>Subtotal</FormLabel>
+                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
                                 </div>
                                 <Button
                                 type="button"
@@ -268,16 +293,21 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                         )
                     })}
                 </div>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => append({ productId: '', quantity: 1 })}
-                >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Item
-                </Button>
+                <div className="flex justify-between items-center mt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({ productId: '', quantity: 1 })}
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Item
+                    </Button>
+                    <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
+                        <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
+                    </div>
+                </div>
                  <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
             </div>
              <FormField
@@ -299,11 +329,11 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
             />
           </form>
         </Form>
-        <SheetFooter>
+        <SheetFooter className="mt-auto pt-4">
            <SheetClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </SheetClose>
-          <Button onClick={form.handleSubmit(handleSubmit)} disabled={isPending}>
+          <Button onClick={form.handleSubmit(handleSubmit)} disabled={isPending || totalOrderValue === 0}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salvar Alterações
           </Button>

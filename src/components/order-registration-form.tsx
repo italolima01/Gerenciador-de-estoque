@@ -26,6 +26,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { Product, Order } from '@/lib/types';
+import { Separator } from './ui/separator';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -45,6 +46,13 @@ interface OrderRegistrationFormProps {
   products: Product[];
   isPending: boolean;
   onSubmit: (orderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => void;
+}
+
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
 }
 
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
@@ -67,6 +75,16 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   
   const availableProducts = products.filter(p => p.quantity > 0);
   const watchItems = form.watch('items');
+
+  const totalOrderValue = React.useMemo(() => {
+    return watchItems.reduce((total, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const price = product?.price || 0;
+        const quantity = item.quantity || 0;
+        return total + (price * quantity);
+    }, 0);
+  }, [watchItems, products]);
+
 
   function handleSubmit(values: FormValues) {
     // Validate stock availability before submitting
@@ -174,10 +192,13 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       const selectedProductId = watchItems?.[index]?.productId;
                       const selectedProduct = availableProducts.find(p => p.id === selectedProductId);
                       const maxQuantity = selectedProduct?.quantity ?? 0;
+                      const price = selectedProduct?.price ?? 0;
+                      const quantity = watchItems?.[index]?.quantity ?? 0;
+                      const subtotal = price * quantity;
 
                     return (
                         <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg bg-muted/50">
-                            <div className="flex-1">
+                            <div className="flex-1 grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name={`items.${index}.productId`}
@@ -202,21 +223,23 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 </FormItem>
                                 )}
                             />
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.quantity`}
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Quantidade</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
                             </div>
-                            <div className="w-32">
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.quantity`}
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Quantidade</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined}/>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                            <div className="w-32 text-right">
+                                <FormLabel>Subtotal</FormLabel>
+                                <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
                             </div>
                             <Button
                             type="button"
@@ -231,16 +254,21 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                     )
                 })}
             </div>
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => append({ productId: '', quantity: 1 })}
-            >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Item
-            </Button>
+            <div className="flex justify-between items-center mt-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ productId: '', quantity: 1 })}
+                >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Item
+                </Button>
+                <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
+                    <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
+                </div>
+            </div>
             <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
         </div>
 
@@ -261,9 +289,9 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                 </FormItem>
             )}
         />
-
+        <Separator />
         <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || totalOrderValue === 0}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Registrar Pedido
             </Button>
