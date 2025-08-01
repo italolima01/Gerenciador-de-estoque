@@ -31,13 +31,11 @@ import { RegisterOrderSheet } from './register-order-sheet';
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   let timeout: NodeJS.Timeout | null = null;
 
-  return (...args: Parameters<F>): Promise<ReturnType<F>> => {
-    return new Promise(resolve => {
+  return (...args: Parameters<F>): void => {
       if (timeout) {
         clearTimeout(timeout);
       }
-      timeout = setTimeout(() => resolve(func(...args)), waitFor);
-    });
+      timeout = setTimeout(() => func(...args), waitFor);
   };
 }
 
@@ -58,8 +56,6 @@ export function Dashboard() {
   const [isConfirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState('orders');
   const { toast } = useToast();
@@ -67,17 +63,20 @@ export function Dashboard() {
   useEffect(() => {
     getInitialProducts().then((initialProducts) => {
       setProducts(initialProducts);
-      setFilteredProductNames(initialProducts.map(p => p.name));
       setIsLoading(false);
     });
   }, []);
 
   const handleAddProduct = (newProduct: Product) => {
     startTransition(async () => {
-      const status = await getProductStatus(newProduct);
-      const newProductWithStatus = { ...newProduct, ...status };
+      // Since the new product doesn't have sales data, we can create a default status.
+      const newProductWithStatus: ProductWithStatus = { 
+        ...newProduct, 
+        zone: 'green',
+        restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
+        confidenceLevel: 'low'
+      };
       setProducts(prev => [newProductWithStatus, ...prev]);
-      setFilteredProductNames(prev => prev ? [...prev, newProduct.name] : [newProduct.name]);
       setAddDialogOpen(false);
     });
   };
@@ -98,7 +97,6 @@ export function Dashboard() {
   const handleDeleteProduct = (productId: string) => {
     startTransition(() => {
         setProducts(prev => prev.filter(p => p.id !== productId));
-        setFilteredProductNames(prev => prev ? prev.filter(name => products.find(p => p.id !== productId && p.name === name)) : null);
         setSelectedProductForDelete(null);
         toast({
             title: "Produto Excluído",
@@ -210,40 +208,16 @@ export function Dashboard() {
         });
       });
   };
-
-  const allProductNames = useMemo(() => products.map(p => p.name), [products]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSearch = useCallback(
-    debounce(async (query: string) => {
-      if (!query) {
-        setFilteredProductNames(allProductNames);
-        setIsSearching(false);
-        return;
-      }
-      setIsSearching(true);
-      const names = await searchProducts(query, allProductNames);
-      setFilteredProductNames(names);
-      setIsSearching(false);
-    }, 500),
-    [allProductNames] 
-  );
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    debouncedSearch(query);
-  };
   
   const filteredProducts = useMemo(() => {
-    if (filteredProductNames === null) {
+    if (!searchQuery) {
       return products;
     }
-    const productSet = new Set(filteredProductNames);
     return products.filter(product =>
-      productSet.has(product.name)
+      product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [products, filteredProductNames]);
+  }, [products, searchQuery]);
+
 
   const headerButton = useMemo(() => {
     if (activeTab === 'orders') {
@@ -319,12 +293,9 @@ export function Dashboard() {
                 type="search"
                 placeholder="Pesquisar produtos..."
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-lg bg-background pl-10"
               />
-              {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
-              )}
             </div>
             {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
