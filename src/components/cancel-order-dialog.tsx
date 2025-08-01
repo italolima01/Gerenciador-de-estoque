@@ -40,7 +40,7 @@ export function CancelOrderDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             Esta ação não pode ser desfeita. O pedido para{' '}
-            <strong>{order.customerName}</strong> será marcado como cancelado e os itens retornarão ao estoque.
+            <strong>{order.customerName}</strong> será removido da lista e os itens retornarão ao estoque.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -56,3 +56,5 @@ export function CancelOrderDialog({
     </AlertDialog>
   );
 }
+
+    

@@ -180,7 +180,7 @@ export function Dashboard() {
       const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
       setProducts(updatedProducts);
 
-      setOrders(prev => prev.map(o => o.id === orderToCancel.id ? { ...o, status: 'Cancelado' } : o));
+      setOrders(prev => prev.filter(o => o.id !== orderToCancel.id));
       
       setSelectedOrderForCancel(null);
 
@@ -472,4 +472,5 @@ export function Dashboard() {
       )}
     </>
   );
-}
+
+    
