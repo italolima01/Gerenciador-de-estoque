@@ -179,6 +179,9 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown-buttons"
+                        fromYear={new Date().getFullYear() - 1}
+                        toYear={new Date().getFullYear() + 1}
                         selected={field.value}
                         onSelect={(date) => {
                           field.onChange(date);

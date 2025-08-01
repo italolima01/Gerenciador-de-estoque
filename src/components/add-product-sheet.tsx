@@ -148,6 +148,9 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown-buttons"
+                        fromYear={new Date().getFullYear()}
+                        toYear={new Date().getFullYear() + 10}
                         selected={field.value}
                         onSelect={(date) => {
                           field.onChange(date);
