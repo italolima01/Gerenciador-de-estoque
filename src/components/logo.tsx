@@ -6,7 +6,7 @@ export function Logo({ className }: { className?: string }) {
     <div className={cn("flex items-center gap-2", className)}>
       <Container className="h-6 w-6 text-primary" />
       <h1 className="font-headline text-2xl font-bold tracking-tight text-foreground">
-        LiquidAssets
+        Distribuidora Chego Já
       </h1>
     </div>
   );

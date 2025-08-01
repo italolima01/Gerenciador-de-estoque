@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'LiquidAssets',
+  title: 'Distribuidora Chego Já',
   description: 'Inventory management for beverage distributors',
 };
 
