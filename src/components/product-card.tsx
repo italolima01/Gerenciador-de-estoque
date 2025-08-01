@@ -76,7 +76,10 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
   const { zone, variant } = getZoneForQuantity(product.quantity);
 
   return (
-    <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg">
+    <Card 
+        className="flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer"
+        onClick={onAlertClick}
+    >
       <CardHeader className="p-0">
         <div className="relative aspect-square w-full">
           <Image
@@ -109,18 +112,14 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
               <MoreVertical className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={onSellClick}>
               <ShoppingCart className="mr-2 h-4 w-4" />
               <span>Registrar Venda</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onAlertClick}>
-              <Bell className="mr-2 h-4 w-4" />
-              <span>Ver Alerta de Compra</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
