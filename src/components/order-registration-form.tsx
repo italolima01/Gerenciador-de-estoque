@@ -75,16 +75,16 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   });
   
   const availableProducts = products.filter(p => p.quantity > 0);
-  const watchItems = form.watch('items');
+  const allFormValues = form.watch();
 
   const totalOrderValue = React.useMemo(() => {
-    return watchItems.reduce((total, item) => {
+    return allFormValues.items.reduce((total, item) => {
         const product = products.find(p => p.id === item.productId);
         const price = product?.price || 0;
         const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
     }, 0);
-  }, [watchItems, products]);
+  }, [allFormValues.items, products]);
 
   function handleConfirmation(values: FormValues) {
     // Validate stock availability before opening confirmation
@@ -196,11 +196,11 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
             <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
             <div className="space-y-4">
                 {fields.map((field, index) => {
-                      const selectedProductId = watchItems?.[index]?.productId;
+                      const selectedProductId = allFormValues.items?.[index]?.productId;
                       const selectedProduct = availableProducts.find(p => p.id === selectedProductId);
                       const maxQuantity = selectedProduct?.quantity ?? 0;
                       const price = selectedProduct?.price ?? 0;
-                      const quantity = watchItems?.[index]?.quantity ?? 0;
+                      const quantity = allFormValues.items?.[index]?.quantity ?? 0;
                       const subtotal = price * quantity;
 
                     return (
@@ -226,7 +226,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     </FormControl>
                                     <SelectContent>
                                         {availableProducts.map(product => (
-                                        <SelectItem key={product.id} value={product.id} disabled={watchItems.some((item, i) => i !== index && item.productId === product.id)}>
+                                        <SelectItem key={product.id} value={product.id} disabled={allFormValues.items.some((item, i) => i !== index && item.productId === product.id)}>
                                             {product.name} (Estoque: {product.quantity})
                                         </SelectItem>
                                         ))}
@@ -248,8 +248,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                             {...field}
                                             min={1}
                                             max={maxQuantity > 0 ? maxQuantity : undefined}
-                                            onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                                            value={field.value}
+                                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -331,3 +330,5 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     </>
   );
 }
+
+    
