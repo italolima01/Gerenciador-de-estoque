@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition, useMemo, useCallback } from 'react'
 import { PlusCircle, Search, Loader2 } from 'lucide-react';
 
 import type { ProductWithStatus, Product, Order } from '@/lib/types';
-import { getInitialProducts, getProductStatus, searchProducts } from '@/app/actions';
+import { getInitialProducts, getProductStatus, searchProducts, updateProductsAndGetStatus } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -100,19 +100,15 @@ export function Dashboard() {
   
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(async () => {
-      const orderedItems = newOrderData.items.map(item => ({ id: item.productId, quantity: item.quantity }));
-      const updatedProducts = await Promise.all(
-        products.map(async (p) => {
-          const orderedItem = orderedItems.find(item => item.id === p.id);
-          if (orderedItem) {
-            const updatedQuantity = p.quantity - orderedItem.quantity;
-            const updatedProductBase = { ...p, quantity: updatedQuantity };
-            const status = await getProductStatus(updatedProductBase);
-            return { ...updatedProductBase, ...status };
+      const updatedProductQuantities: { [productId: string]: number } = {};
+      for (const item of newOrderData.items) {
+          const product = products.find(p => p.id === item.productId);
+          if(product) {
+            updatedProductQuantities[item.productId] = product.quantity - item.quantity;
           }
-          return p;
-        })
-      );
+      }
+
+      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
       setProducts(updatedProducts);
 
       const newOrder: Order = {
@@ -127,35 +123,30 @@ export function Dashboard() {
 
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(async () => {
-      // Logic to revert stock from original order and deduct from new order
       const originalOrder = orders.find(o => o.id === updatedOrderData.id);
       if (!originalOrder) return;
 
       const productQuantityChanges: {[productId: string]: number} = {};
 
-      // Add back original quantities
       for (const item of originalOrder.items) {
           productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
       }
 
-      // Subtract new quantities
       for (const item of updatedOrderData.items) {
           productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) - item.quantity;
       }
 
-      const updatedProducts = await Promise.all(
-          products.map(async (p) => {
-              if (productQuantityChanges[p.id]) {
-                  const updatedQuantity = p.quantity + productQuantityChanges[p.id];
-                  const updatedProductBase = { ...p, quantity: updatedQuantity };
-                  const status = await getProductStatus(updatedProductBase);
-                  return { ...updatedProductBase, ...status };
-              }
-              return p;
-          })
-      );
+      const updatedProductQuantities: { [productId: string]: number } = {};
+      for (const productId in productQuantityChanges) {
+          const product = products.find(p => p.id === productId);
+          if (product) {
+              updatedProductQuantities[productId] = product.quantity + productQuantityChanges[productId];
+          }
+      }
 
+      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
       setProducts(updatedProducts);
+      
       setOrders(prev => prev.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
       setSelectedOrderForEdit(null);
     });
@@ -167,25 +158,17 @@ export function Dashboard() {
   
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(async () => {
-      // Re-add stock
-      const productQuantityChanges: {[productId: string]: number} = {};
+      const updatedProductQuantities: { [productId: string]: number } = {};
       for (const item of orderToCancel.items) {
-          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+              updatedProductQuantities[item.productId] = product.quantity + item.quantity;
+          }
       }
-      const updatedProducts = await Promise.all(
-          products.map(async (p) => {
-              if (productQuantityChanges[p.id]) {
-                  const updatedQuantity = p.quantity + productQuantityChanges[p.id];
-                  const updatedProductBase = { ...p, quantity: updatedQuantity };
-                  const status = await getProductStatus(updatedProductBase);
-                  return { ...updatedProductBase, ...status };
-              }
-              return p;
-          })
-      );
+
+      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
       setProducts(updatedProducts);
 
-      // Update order status
       setOrders(prev => prev.map(o => o.id === orderToCancel.id ? { ...o, status: 'Cancelado' } : o));
       
       setSelectedOrderForCancel(null);

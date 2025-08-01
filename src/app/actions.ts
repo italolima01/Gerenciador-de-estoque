@@ -1,25 +1,29 @@
+
 'use server';
 
 import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
 import { generateRestockAlert, type GenerateRestockAlertOutput } from '@/ai/flows/generate-restock-alert';
-import { generateMultipleRestockAlerts } from '@/ai/flows/generate-multiple-restock-alerts';
+import { generateMultipleRestockAlerts, type GenerateMultipleRestockAlertsOutput } from '@/ai/flows/generate-multiple-restock-alerts';
 import { products as mockProducts } from '@/lib/data';
 import type { Product, ProductWithStatus } from '@/lib/types';
 
-export async function getInitialProducts(): Promise<ProductWithStatus[]> {
+async function getProductsWithStatus(products: Product[]): Promise<ProductWithStatus[]> {
+  if (products.length === 0) {
+    return [];
+  }
   try {
-    const productsForAlert = mockProducts.map(p => ({
-        id: p.id,
-        productName: p.name,
-        currentStock: p.quantity,
-        averageDailySales: p.averageDailySales,
-        daysToRestock: p.daysToRestock,
-        expirationDate: p.expirationDate,
+    const productsForAlert = products.map(p => ({
+      id: p.id,
+      productName: p.name,
+      currentStock: p.quantity,
+      averageDailySales: p.averageDailySales,
+      daysToRestock: p.daysToRestock,
+      expirationDate: p.expirationDate,
     }));
     
     const alerts = await generateMultipleRestockAlerts({ products: productsForAlert });
     
-    const productsWithStatus = mockProducts.map(product => {
+    const productsWithStatus = products.map(product => {
       const alert = alerts.find(a => a.id === product.id);
       if (alert) {
         return { ...product, ...alert };
@@ -38,14 +42,18 @@ export async function getInitialProducts(): Promise<ProductWithStatus[]> {
 
   } catch (error) {
     console.error(`Failed to get batch status for products`, error);
-    // Return mock products with a generic error status if the batch call fails
-    return mockProducts.map(product => ({
+    // Return products with a generic error status if the batch call fails
+    return products.map(product => ({
       ...product,
       zone: 'red',
       restockRecommendation: 'Error fetching recommendation.',
       confidenceLevel: 'low',
     }));
   }
+}
+
+export async function getInitialProducts(): Promise<ProductWithStatus[]> {
+  return getProductsWithStatus(mockProducts);
 }
 
 export async function getProductStatus(product: Product): Promise<GenerateRestockAlertOutput> {
@@ -58,6 +66,36 @@ export async function getProductStatus(product: Product): Promise<GenerateRestoc
     });
     return alert;
 }
+
+export async function updateProductsAndGetStatus(
+  currentProducts: ProductWithStatus[],
+  updatedProductQuantities: { [productId: string]: number }
+): Promise<ProductWithStatus[]> {
+    const productIdsToUpdate = Object.keys(updatedProductQuantities);
+    if (productIdsToUpdate.length === 0) {
+        return currentProducts;
+    }
+
+    // Create a new list of all products with updated quantities
+    const allProductsWithUpdatedQuantities: Product[] = currentProducts.map(p => {
+        if (updatedProductQuantities[p.id] !== undefined) {
+            return { ...p, quantity: updatedProductQuantities[p.id] };
+        }
+        return p;
+    });
+
+    // Get the products that actually need their status (re)calculated
+    const productsToRecalculate = allProductsWithUpdatedQuantities.filter(p => productIdsToUpdate.includes(p.id));
+    
+    const statusUpdates = await getProductsWithStatus(productsToRecalculate);
+
+    // Merge the new statuses back into the full product list
+    return allProductsWithUpdatedQuantities.map(p => {
+        const newStatus = statusUpdates.find(s => s.id === p.id);
+        return newStatus || p; // If a status wasn't updated, keep the old one
+    });
+}
+
 
 export async function searchProducts(query: string, allProductNames: string[]): Promise<string[]> {
   if (!query) {
