@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
@@ -19,7 +19,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription
 } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import type { Product, Order } from '@/lib/types';
 import { Separator } from './ui/separator';
+import { ConfirmOrderDialog } from './confirm-order-dialog';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -58,6 +58,7 @@ function formatCurrency(value: number) {
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
+  const [orderToConfirm, setOrderToConfirm] = React.useState<FormValues | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -85,9 +86,8 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     }, 0);
   }, [watchItems, products]);
 
-
-  function handleSubmit(values: FormValues) {
-    // Validate stock availability before submitting
+  function handleConfirmation(values: FormValues) {
+    // Validate stock availability before opening confirmation
     for (const item of values.items) {
       const product = products.find(p => p.id === item.productId);
       if (!product || product.quantity < item.quantity) {
@@ -99,16 +99,21 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         return;
       }
     }
-    
+    setOrderToConfirm(values);
+  }
+
+  function handleFinalSubmit() {
+    if (!orderToConfirm) return;
+
     const newOrderData = {
-        customerName: values.customerName,
-        deliveryDate: format(values.deliveryDate, 'yyyy-MM-dd'),
-        items: values.items.map(item => ({
+        customerName: orderToConfirm.customerName,
+        deliveryDate: format(orderToConfirm.deliveryDate, 'yyyy-MM-dd'),
+        items: orderToConfirm.items.map(item => ({
             productId: item.productId,
             productName: products.find(p => p.id === item.productId)?.name || 'Produto desconhecido',
             quantity: item.quantity,
         })),
-        notes: values.notes,
+        notes: orderToConfirm.notes,
     };
     
     onSubmit(newOrderData);
@@ -117,6 +122,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         title: "Pedido Registrado!",
         description: "O novo pedido foi criado com sucesso.",
     });
+    setOrderToConfirm(null);
     form.reset({
         customerName: '',
         items: [{ productId: '', quantity: 1 }],
@@ -126,8 +132,9 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   }
 
   return (
+    <>
     <Form {...form}>
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+    <form onSubmit={form.handleSubmit(handleConfirmation)} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
                 control={form.control}
@@ -213,7 +220,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     </FormControl>
                                     <SelectContent>
                                         {availableProducts.map(product => (
-                                        <SelectItem key={product.id} value={product.id}>
+                                        <SelectItem key={product.id} value={product.id} disabled={watchItems.some((item, i) => i !== index && item.productId === product.id)}>
                                             {product.name} (Estoque: {product.quantity})
                                         </SelectItem>
                                         ))}
@@ -298,5 +305,16 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         </div>
     </form>
     </Form>
+    {orderToConfirm && (
+        <ConfirmOrderDialog
+            isOpen={!!orderToConfirm}
+            onOpenChange={() => setOrderToConfirm(null)}
+            customerName={orderToConfirm.customerName}
+            totalValue={totalOrderValue}
+            onConfirm={handleFinalSubmit}
+            isPending={isPending}
+        />
+    )}
+    </>
   );
 }
