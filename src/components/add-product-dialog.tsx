@@ -11,14 +11,13 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetClose,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -41,14 +40,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface AddProductSheetProps {
+interface AddProductDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onProductAdd: (product: Product) => void;
   isPending: boolean;
 }
 
-export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending }: AddProductSheetProps) {
+export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending }: AddProductDialogProps) {
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,6 +57,12 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
       price: 0,
     },
   });
+  
+  React.useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+    }
+  }, [isOpen, form]);
 
   function onSubmit(values: FormValues) {
     const newProduct: Product = {
@@ -73,16 +78,16 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="font-headline">Adicionar Novo Produto</SheetTitle>
-          <SheetDescription>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-headline">Adicionar Novo Produto</DialogTitle>
+          <DialogDescription>
             Preencha os detalhes abaixo para adicionar uma nova bebida ao seu inventário.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow space-y-4 overflow-y-auto pr-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -165,18 +170,16 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
                 </FormItem>
               )}
             />
+            <DialogFooter>
+               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancelar</Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Adicionar Produto
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
-        <SheetFooter>
-           <SheetClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </SheetClose>
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Adicionar Produto
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

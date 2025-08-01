@@ -9,7 +9,7 @@ import { getInitialProducts, getProductStatus, searchProducts, updateProductsAnd
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
-import { AddProductSheet } from '@/components/add-product-sheet';
+import { AddProductDialog } from '@/components/add-product-dialog';
 import { SellProductDialog } from '@/components/sell-product-dialog';
 import { RestockAlertDialog } from '@/components/restock-alert-dialog';
 import { Logo } from '@/components/logo';
@@ -46,7 +46,7 @@ export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddSheetOpen, setAddSheetOpen] = useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
@@ -78,7 +78,7 @@ export function Dashboard() {
       const newProductWithStatus = { ...newProduct, ...status };
       setProducts(prev => [newProductWithStatus, ...prev]);
       setFilteredProductNames(prev => prev ? [...prev, newProduct.name] : [newProduct.name]);
-      setAddSheetOpen(false);
+      setAddDialogOpen(false);
     });
   };
 
@@ -256,7 +256,7 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddSheetOpen(true)}>
+            <Button onClick={() => setAddDialogOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Produto
             </Button>
@@ -276,7 +276,7 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddSheetOpen(true)} size="sm">
+            <Button onClick={() => setAddDialogOpen(true)} size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Produto
             </Button>
@@ -372,9 +372,9 @@ export function Dashboard() {
         </Tabs>
       </main>
 
-      <AddProductSheet
-        isOpen={isAddSheetOpen}
-        onOpenChange={setAddSheetOpen}
+      <AddProductDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setAddDialogOpen}
         onProductAdd={handleAddProduct}
         isPending={isPending}
       />
