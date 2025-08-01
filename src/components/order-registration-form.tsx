@@ -243,12 +243,13 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 <FormItem>
                                     <FormLabel>Quantidade</FormLabel>
                                     <FormControl>
-                                        <Input 
-                                            type="number" 
-                                            {...field} 
-                                            min={1} 
-                                            max={maxQuantity > 0 ? maxQuantity : undefined} 
-                                            onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                        <Input
+                                            type="number"
+                                            {...field}
+                                            min={1}
+                                            max={maxQuantity > 0 ? maxQuantity : undefined}
+                                            onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                                            value={field.value}
                                         />
                                     </FormControl>
                                     <FormMessage />
