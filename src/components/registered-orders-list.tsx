@@ -1,13 +1,10 @@
+
 'use client';
 
 import type { Order } from '@/lib/types';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Table,
@@ -31,6 +28,7 @@ import { format, parseISO } from 'date-fns';
 interface RegisteredOrdersListProps {
   orders: Order[];
   onStatusChange: (orderId: string, status: Order['status']) => void;
+  onOrderSelect: (order: Order) => void;
 }
 
 const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
@@ -39,7 +37,7 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onStatusChange }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect }: RegisteredOrdersListProps) {
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
@@ -66,7 +64,7 @@ export function RegisteredOrdersList({ orders, onStatusChange }: RegisteredOrder
           </TableHeader>
           <TableBody>
             {orders.map((order) => (
-              <TableRow key={order.id}>
+              <TableRow key={order.id} onClick={() => onOrderSelect(order)} className="cursor-pointer">
                 <TableCell>
                   <div className="font-medium">{order.customerName}</div>
                   <div className="text-sm text-muted-foreground md:hidden">
@@ -86,7 +84,7 @@ export function RegisteredOrdersList({ orders, onStatusChange }: RegisteredOrder
                 </TableCell>
                 <TableCell className="text-right">
                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button size="icon" variant="ghost">
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Mais ações</span>

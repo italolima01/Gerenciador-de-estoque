@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -15,6 +16,7 @@ import { Logo } from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrderRegistrationForm } from './order-registration-form';
 import { RegisteredOrdersList } from './registered-orders-list';
+import { OrderDetailsDialog } from './order-details-dialog';
 
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
@@ -23,6 +25,7 @@ export function Dashboard() {
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -159,6 +162,7 @@ export function Dashboard() {
              <RegisteredOrdersList 
                 orders={orders}
                 onStatusChange={handleOrderStatusChange}
+                onOrderSelect={setSelectedOrderForDetails}
             />
           </TabsContent>
         </Tabs>
@@ -188,6 +192,15 @@ export function Dashboard() {
           onOpenChange={() => setSelectedProductForAlert(null)}
         />
       )}
+
+      {selectedOrderForDetails && (
+        <OrderDetailsDialog
+          order={selectedOrderForDetails}
+          isOpen={!!selectedOrderForDetails}
+          onOpenChange={() => setSelectedOrderForDetails(null)}
+        />
+      )}
     </>
   );
 }
+
