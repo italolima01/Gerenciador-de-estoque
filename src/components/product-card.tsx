@@ -42,6 +42,13 @@ const zoneTextMap: { [key: string]: string } = {
     green: 'Ideal',
 }
 
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
+}
+
 
 export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick }: ProductCardProps) {
   return (
@@ -65,7 +72,8 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
                 {zoneTextMap[product.zone] || product.zone}
             </Badge>
         </div>
-        <CardDescription className="mt-2">Vencimento: {new Date(product.expirationDate).toLocaleDateString()}</CardDescription>
+        <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
+        <CardDescription className="mt-1">Vencimento: {new Date(product.expirationDate).toLocaleDateString()}</CardDescription>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>

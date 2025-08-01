@@ -35,6 +35,7 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
+  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -54,6 +55,7 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
     defaultValues: {
       name: '',
       quantity: 0,
+      price: 0,
     },
   });
 
@@ -94,19 +96,34 @@ export function AddProductSheet({ isOpen, onOpenChange, onProductAdd, isPending 
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantidade em Estoque</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex gap-4">
+               <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem className="w-1/2">
+                    <FormLabel>Quantidade</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem className="w-1/2">
+                    <FormLabel>Preço (R$)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="expirationDate"
