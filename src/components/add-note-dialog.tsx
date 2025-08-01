@@ -49,10 +49,8 @@ export function AddNoteDialog({ isOpen, onOpenChange, onSave, isPending }: AddNo
 
   function onSubmit(values: FormValues) {
     onSave(values.note);
-    form.reset();
   }
   
-  // Reset form when dialog opens/closes
   React.useEffect(() => {
     if (!isOpen) {
       form.reset();
@@ -96,3 +94,5 @@ export function AddNoteDialog({ isOpen, onOpenChange, onSave, isPending }: AddNo
     </Dialog>
   );
 }
+
+    

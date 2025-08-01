@@ -415,10 +415,7 @@ export function Dashboard() {
       {orderToComplete && (
         <ConfirmCompletionDialog
             isOpen={isConfirmCompleteOpen}
-            onOpenChange={() => {
-                setConfirmCompleteOpen(false);
-                setOrderToComplete(null);
-            }}
+            onOpenChange={setConfirmCompleteOpen}
             onConfirmWithoutNote={() => handleCompleteOrder(orderToComplete.id)}
             onConfirmWithNote={() => {
                 setConfirmCompleteOpen(false);
@@ -430,9 +427,11 @@ export function Dashboard() {
       {orderToComplete && (
         <AddNoteDialog
             isOpen={isAddNoteDialogOpen}
-            onOpenChange={() => {
-                setAddNoteDialogOpen(false);
-                setOrderToComplete(null);
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setOrderToComplete(null);
+                }
+                setAddNoteDialogOpen(isOpen);
             }}
             onSave={(note) => handleCompleteOrder(orderToComplete.id, note)}
             isPending={isPending}
@@ -440,3 +439,6 @@ export function Dashboard() {
       )}
     </>
   );
+}
+
+    
