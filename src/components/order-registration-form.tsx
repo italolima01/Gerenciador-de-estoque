@@ -214,7 +214,6 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                    <p className="text-muted-foreground mb-4">Nenhum item no pedido.</p>
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={() => setSelectProductOpen(true)}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -277,7 +276,6 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                 <div className="flex justify-between items-center mt-4">
                     <Button
                         type="button"
-                        variant="outline"
                         size="sm"
                         onClick={() => setSelectProductOpen(true)}
                     >
