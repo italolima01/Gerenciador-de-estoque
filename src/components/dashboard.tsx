@@ -439,7 +439,8 @@ export function Dashboard() {
         <CancelOrderDialog
           order={selectedOrderForCancel}
           isOpen={!!selectedOrderForCancel}
-          onOpenChange={() => handleCancelOrder(selectedOrderForCancel)}
+          onOpenChange={() => setSelectedOrderForCancel(null)}
+          onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
           isPending={isPending}
         />
       )}
