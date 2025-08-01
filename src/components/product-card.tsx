@@ -32,12 +32,6 @@ interface ProductCardProps {
   onDeleteClick: () => void;
 }
 
-const zoneVariantMap: { [key: string]: BadgeProps['variant'] } = {
-  red: 'destructive',
-  yellow: 'secondary',
-  green: 'success',
-};
-
 const zoneTextMap: { [key: string]: string } = {
     red: 'Crítico',
     yellow: 'Atenção',
@@ -65,10 +59,21 @@ function getExpirationDateColor(expirationDate: string): string {
     return 'text-green-600'; // Green for more than 30 days
 }
 
+function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green'; variant: BadgeProps['variant'] } {
+    if (quantity <= 20) {
+        return { zone: 'red', variant: 'destructive' };
+    }
+    if (quantity <= 50) {
+        return { zone: 'yellow', variant: 'secondary' };
+    }
+    return { zone: 'green', variant: 'success' };
+}
+
 
 export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick }: ProductCardProps) {
   const expirationDateColor = getExpirationDateColor(product.expirationDate);
   const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+  const { zone, variant } = getZoneForQuantity(product.quantity);
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg">
@@ -87,8 +92,8 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
       <CardContent className="flex-grow p-4">
         <div className="flex items-start justify-between">
            <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
-            <Badge variant={zoneVariantMap[product.zone] || 'default'} className="capitalize shrink-0">
-                {zoneTextMap[product.zone] || product.zone}
+            <Badge variant={variant} className="capitalize shrink-0">
+                {zoneTextMap[zone]}
             </Badge>
         </div>
         <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
