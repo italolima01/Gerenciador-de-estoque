@@ -39,6 +39,10 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   };
 }
 
+function removeAccents(str: string) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
@@ -213,8 +217,9 @@ export function Dashboard() {
     if (!searchQuery) {
       return products;
     }
+    const normalizedQuery = removeAccents(searchQuery.toLowerCase());
     return products.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      removeAccents(product.name.toLowerCase()).includes(normalizedQuery)
     );
   }, [products, searchQuery]);
 
@@ -445,3 +450,4 @@ export function Dashboard() {
   );
 
     
+
