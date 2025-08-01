@@ -66,7 +66,9 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
 
   function onSubmit(values: FormValues) {
     const newProductData: Omit<Product, 'id'> = {
-      ...values,
+      name: values.name,
+      quantity: values.quantity,
+      price: values.price,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
       averageDailySales: 0, // Default value
       daysToRestock: 0, // Default value
@@ -182,5 +184,3 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     </Dialog>
   );
 }
-
-    
