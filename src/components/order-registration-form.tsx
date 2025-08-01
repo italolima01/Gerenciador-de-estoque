@@ -69,7 +69,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     },
   });
 
-  const { fields, append, remove, insert } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -272,31 +272,30 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 <FormLabel>Subtotal</FormLabel>
                                 <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => insert(index + 1, { productId: '', quantity: 1 })}
-                                >
-                                <PlusCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
+                            <Button
                                 type="button"
                                 variant="destructive"
                                 size="icon"
                                 onClick={() => remove(index)}
                                 >
                                 <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
+                            </Button>
                         </div>
                     )
                 })
               )}
             </div>
             {fields.length > 0 && (
-                <div className="flex justify-end items-center mt-4">
+                <div className="flex justify-between items-center mt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({ productId: '', quantity: 1 })}
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Item
+                    </Button>
                     <div className="text-right">
                         <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
                         <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
