@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { PlusCircle } from 'lucide-react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
+import { PlusCircle, Search } from 'lucide-react';
 
-import type { ProductWithStatus, Product, Order, OrderItem } from '@/lib/types';
+import type { ProductWithStatus, Product, Order } from '@/lib/types';
 import { getInitialProducts, getProductStatus } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrderRegistrationForm } from './order-registration-form';
 import { RegisteredOrdersList } from './registered-orders-list';
 import { OrderDetailsDialog } from './order-details-dialog';
+import { Input } from './ui/input';
 
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
@@ -26,6 +27,7 @@ export function Dashboard() {
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -86,6 +88,12 @@ export function Dashboard() {
   const handleOrderStatusChange = (orderId: string, status: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
+  
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
 
 
   return (
@@ -118,6 +126,16 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
                 <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
             </div>
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Pesquisar produtos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg bg-background pl-10"
+              />
+            </div>
             {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
@@ -132,7 +150,7 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
