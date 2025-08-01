@@ -4,7 +4,7 @@
 import { useState, useEffect, useTransition, useMemo, useCallback } from 'react';
 import { PlusCircle, Search, Loader2 } from 'lucide-react';
 
-import type { ProductWithStatus, Product, Order } from '@/lib/types';
+import type { Order, Product, ProductWithStatus } from '@/lib/types';
 import { getInitialProducts, getProductStatus, searchProducts, updateProductsAndGetStatus } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
 import { CancelOrderDialog } from './cancel-order-dialog';
+import { ConfirmCompletionDialog } from './confirm-completion-dialog';
+import { AddNoteDialog } from './add-note-dialog';
+
 
 // Debounce helper function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -50,6 +53,8 @@ export function Dashboard() {
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
+  const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
+  const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -81,15 +86,16 @@ export function Dashboard() {
     };
 
     startTransition(async () => {
-      const status = await getProductStatus(updatedProductBase);
-      setProducts(prev => prev.map(p => p.id === product.id ? {...updatedProductBase, ...status} : p));
-      setSelectedProductForSale(null);
+       const updatedProducts = await updateProductsAndGetStatus(products, { [product.id]: updatedProductBase.quantity });
+       setProducts(updatedProducts);
+       setSelectedProductForSale(null);
     });
   };
 
   const handleDeleteProduct = (productId: string) => {
     startTransition(() => {
         setProducts(prev => prev.filter(p => p.id !== productId));
+        setFilteredProductNames(prev => prev ? prev.filter(name => products.find(p => p.id !== productId && p.name === name)) : null);
         setSelectedProductForDelete(null);
         toast({
             title: "Produto Excluído",
@@ -180,6 +186,22 @@ export function Dashboard() {
     });
   }
 
+  const handleCompleteOrder = (orderId: string, note?: string) => {
+      startTransition(() => {
+        setOrders(prev => prev.map(o => o.id === orderId ? { 
+            ...o, 
+            status: 'Concluído', 
+            notes: note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes 
+        } : o));
+        setOrderToComplete(null);
+        setAddNoteDialogOpen(false);
+         toast({
+            title: "Pedido Concluído!",
+            description: `O pedido foi marcado como concluído.`,
+        });
+      });
+  };
+
   const allProductNames = useMemo(() => products.map(p => p.name), [products]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,8 +230,9 @@ export function Dashboard() {
     if (filteredProductNames === null) {
       return products;
     }
+    const productSet = new Set(filteredProductNames);
     return products.filter(product =>
-      filteredProductNames.includes(product.name)
+      productSet.has(product.name)
     );
   }, [products, filteredProductNames]);
 
@@ -311,6 +334,7 @@ export function Dashboard() {
                     onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                     onOrderEdit={setSelectedOrderForEdit}
                     onOrderCancel={setSelectedOrderForCancel}
+                    onMarkAsComplete={setOrderToComplete}
                 />
               </CardContent>
             </Card>
@@ -382,6 +406,28 @@ export function Dashboard() {
           isPending={isPending}
         />
       )}
+
+      {orderToComplete && !isAddNoteDialogOpen && (
+        <ConfirmCompletionDialog
+            isOpen={!!orderToComplete}
+            onOpenChange={() => setOrderToComplete(null)}
+            onConfirmWithoutNote={() => handleCompleteOrder(orderToComplete.id)}
+            onConfirmWithNote={() => setAddNoteDialogOpen(true)}
+        />
+      )}
+
+      {orderToComplete && isAddNoteDialogOpen && (
+        <AddNoteDialog
+            isOpen={isAddNoteDialogOpen}
+            onOpenChange={() => {
+                setAddNoteDialogOpen(false);
+                setOrderToComplete(null);
+            }}
+            onSave={(note) => handleCompleteOrder(orderToComplete.id, note)}
+            isPending={isPending}
+        />
+      )}
     </>
   );
-}
+
+    

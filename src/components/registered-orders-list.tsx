@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface RegisteredOrdersListProps {
@@ -28,6 +28,7 @@ interface RegisteredOrdersListProps {
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
   onOrderCancel: (order: Order) => void;
+  onMarkAsComplete: (order: Order) => void;
 }
 
 const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
@@ -36,7 +37,7 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, onOrderEdit, onOrderCancel }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
@@ -82,22 +83,19 @@ export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, on
             <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" disabled={order.status === 'Cancelado'}>
+                    <Button size="icon" variant="ghost" disabled={order.status === 'Cancelado' || order.status === 'Concluído'}>
                       <MoreHorizontal className="h-4 w-4" />
                       <span className="sr-only">Mais ações</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsComplete(order); }} disabled={order.status === 'Concluído'}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Marcar como Concluído
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Concluído')}>
-                        Marcar como Concluído
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Pendente')}>
-                        Marcar como Pendente
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
@@ -116,3 +114,5 @@ export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, on
     </Table>
   );
 }
+
+    
