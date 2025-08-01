@@ -61,6 +61,7 @@ export function Dashboard() {
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState('orders');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -244,6 +245,46 @@ export function Dashboard() {
     );
   }, [products, filteredProductNames]);
 
+  const headerButton = useMemo(() => {
+    if (activeTab === 'orders') {
+        return (
+            <Button onClick={() => setRegisterOrderSheetOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registrar Pedido
+            </Button>
+        );
+    }
+    if (activeTab === 'inventory') {
+        return (
+            <Button onClick={() => setAddSheetOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Produto
+            </Button>
+        );
+    }
+    return null;
+  }, [activeTab]);
+  
+  const mobileHeaderButton = useMemo(() => {
+    if (activeTab === 'orders') {
+        return (
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Pedido
+            </Button>
+        );
+    }
+    if (activeTab === 'inventory') {
+        return (
+            <Button onClick={() => setAddSheetOpen(true)} size="sm">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Produto
+            </Button>
+        );
+    }
+    return null;
+  }, [activeTab]);
+
 
   return (
     <>
@@ -251,34 +292,20 @@ export function Dashboard() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
             <Logo />
              <div className="hidden sm:flex items-center gap-2">
-                <Button onClick={() => setRegisterOrderSheetOpen(true)} variant="outline">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Registrar Pedido
-                </Button>
-                <Button onClick={() => setAddSheetOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Produto
-                </Button>
+                {headerButton}
             </div>
         </div>
       </header>
         
       <main className="container mx-auto p-4 md:p-6">
-        <Tabs defaultValue="orders">
+        <Tabs defaultValue="orders" onValueChange={setActiveTab}>
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
             </TabsList>
              <div className='sm:hidden flex items-center gap-2'>
-                 <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Pedido
-                </Button>
-                <Button onClick={() => setAddSheetOpen(true)} size="sm">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Produto
-                </Button>
+                 {mobileHeaderButton}
             </div>
           </div>
           <TabsContent value="inventory">
