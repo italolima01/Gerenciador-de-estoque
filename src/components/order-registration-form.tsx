@@ -69,7 +69,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, insert } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -204,7 +204,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       const subtotal = price * quantity;
 
                     return (
-                        <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg bg-muted/50">
+                        <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
                             <div className="flex-1 grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -256,33 +256,34 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                 )}
                             />
                             </div>
-                            <div className="w-32 text-right">
+                             <div className="w-32 text-right">
                                 <FormLabel>Subtotal</FormLabel>
                                 <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
                             </div>
-                            <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            onClick={() => remove(index)}
-                            disabled={fields.length <= 1}
-                            >
-                            <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => insert(index + 1, { productId: '', quantity: 1 })}
+                                >
+                                <PlusCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                disabled={fields.length <= 1}
+                                >
+                                <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     )
                 })}
             </div>
-            <div className="flex justify-between items-center mt-4">
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => append({ productId: '', quantity: 1 })}
-                >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Item
-                </Button>
+            <div className="flex justify-end items-center mt-4">
                 <div className="text-right">
                     <p className="text-sm text-muted-foreground">Valor Total do Pedido</p>
                     <p className="font-bold text-2xl text-primary">{formatCurrency(totalOrderValue)}</p>
@@ -330,5 +331,3 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     </>
   );
 }
-
-    
