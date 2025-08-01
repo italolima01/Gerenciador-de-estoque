@@ -10,6 +10,7 @@ export type Product = {
 };
 
 export type ProductWithStatus = Product & {
+  id: string;
   zone: 'green' | 'yellow' | 'red';
   restockRecommendation: string;
   confidenceLevel: string;
