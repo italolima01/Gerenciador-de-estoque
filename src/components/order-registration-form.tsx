@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,7 +24,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { Product } from '@/lib/types';
+import type { Product, Order } from '@/lib/types';
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, 'Selecione um produto.'),
@@ -43,7 +43,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface OrderRegistrationFormProps {
   products: Product[];
   isPending: boolean;
-  onSubmit: (orderedItems: { id: string; quantity: number }[]) => void;
+  onSubmit: (orderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => void;
 }
 
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
@@ -79,14 +79,29 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
       }
     }
     
-    const orderedItems = values.items.map(item => ({ id: item.productId, quantity: item.quantity }));
-    onSubmit(orderedItems);
+    const newOrderData = {
+        customerName: values.customerName,
+        deliveryDate: format(values.deliveryDate, 'yyyy-MM-dd'),
+        items: values.items.map(item => ({
+            productId: item.productId,
+            productName: products.find(p => p.id === item.productId)?.name || 'Produto desconhecido',
+            quantity: item.quantity,
+        })),
+        notes: values.notes,
+    };
+    
+    onSubmit(newOrderData);
 
     toast({
         title: "Pedido Registrado!",
         description: "O novo pedido foi criado com sucesso.",
     });
-    form.reset();
+    form.reset({
+        customerName: '',
+        items: [{ productId: '', quantity: 1 }],
+        notes: '',
+        deliveryDate: undefined
+    });
   }
 
   return (
@@ -189,7 +204,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                             <FormItem>
                                                 <FormLabel>Quantidade</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" {...field} min={1} max={maxQuantity}/>
+                                                    <Input type="number" {...field} min={1} max={maxQuantity > 0 ? maxQuantity : undefined}/>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -201,6 +216,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     variant="destructive"
                                     size="icon"
                                     onClick={() => remove(index)}
+                                    disabled={fields.length <= 1}
                                     >
                                     <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -218,7 +234,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Item
                     </Button>
-                    <FormMessage>{form.formState.errors.items?.message}</FormMessage>
+                    <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
                 </div>
 
                 <FormField

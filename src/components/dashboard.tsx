@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import { PlusCircle } from 'lucide-react';
 
-import type { ProductWithStatus, Product } from '@/lib/types';
+import type { ProductWithStatus, Product, Order, OrderItem } from '@/lib/types';
 import { getInitialProducts, getProductStatus } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,9 +14,11 @@ import { RestockAlertDialog } from '@/components/restock-alert-dialog';
 import { Logo } from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrderRegistrationForm } from './order-registration-form';
+import { RegisteredOrdersList } from './registered-orders-list';
 
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [selectedProductForSale, setSelectedProductForSale] = useState<ProductWithStatus | null>(null);
@@ -51,8 +53,9 @@ export function Dashboard() {
     });
   };
   
-  const handleOrderSubmit = (orderedItems: { id: string; quantity: number }[]) => {
+  const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(async () => {
+      const orderedItems = newOrderData.items.map(item => ({ id: item.productId, quantity: item.quantity }));
       const updatedProducts = await Promise.all(
         products.map(async (p) => {
           const orderedItem = orderedItems.find(item => item.id === p.id);
@@ -66,8 +69,21 @@ export function Dashboard() {
         })
       );
       setProducts(updatedProducts);
+
+      const newOrder: Order = {
+        ...newOrderData,
+        id: `order_${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        status: 'Pendente',
+      };
+      setOrders(prev => [newOrder, ...prev]);
     });
   };
+
+  const handleOrderStatusChange = (orderId: string, status: Order['status']) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  };
+
 
   return (
     <>
@@ -86,7 +102,8 @@ export function Dashboard() {
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
-              <TabsTrigger value="orders">Pedidos</TabsTrigger>
+              <TabsTrigger value="registerOrder">Registrar Pedido</TabsTrigger>
+              <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
             </TabsList>
              <Button onClick={() => setAddSheetOpen(true)} className='sm:hidden'>
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -123,7 +140,7 @@ export function Dashboard() {
               </div>
             )}
           </TabsContent>
-          <TabsContent value="orders">
+          <TabsContent value="registerOrder">
              <div className="mb-6">
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Registro de Pedidos</h2>
                 <p className="text-muted-foreground">Crie um novo pedido para um cliente.</p>
@@ -132,6 +149,16 @@ export function Dashboard() {
                 products={products}
                 onSubmit={handleOrderSubmit}
                 isPending={isPending}
+            />
+          </TabsContent>
+           <TabsContent value="orders">
+             <div className="mb-6">
+                <h2 className="font-headline text-3xl font-bold tracking-tight">Pedidos Registrados</h2>
+                <p className="text-muted-foreground">Visualize e gerencie todos os pedidos dos clientes.</p>
+            </div>
+             <RegisteredOrdersList 
+                orders={orders}
+                onStatusChange={handleOrderStatusChange}
             />
           </TabsContent>
         </Tabs>

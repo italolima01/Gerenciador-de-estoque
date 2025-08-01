@@ -14,3 +14,19 @@ export type ProductWithStatus = Product & {
   restockRecommendation: string;
   confidenceLevel: string;
 };
+
+export type OrderItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+};
+
+export type Order = {
+  id: string;
+  customerName: string;
+  deliveryDate: string; // YYYY-MM-DD
+  items: OrderItem[];
+  notes?: string;
+  status: 'Pendente' | 'Concluído' | 'Cancelado';
+  createdAt: string; // ISO date string
+};
