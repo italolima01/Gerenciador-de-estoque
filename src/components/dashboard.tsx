@@ -12,6 +12,8 @@ import { AddProductSheet } from '@/components/add-product-sheet';
 import { SellProductDialog } from '@/components/sell-product-dialog';
 import { RestockAlertDialog } from '@/components/restock-alert-dialog';
 import { Logo } from '@/components/logo';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OrderRegistrationForm } from './order-registration-form';
 
 export function Dashboard() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
@@ -48,51 +50,91 @@ export function Dashboard() {
       setSelectedProductForSale(null);
     });
   };
+  
+  const handleOrderSubmit = (orderedItems: { id: string; quantity: number }[]) => {
+    startTransition(async () => {
+      const updatedProducts = await Promise.all(
+        products.map(async (p) => {
+          const orderedItem = orderedItems.find(item => item.id === p.id);
+          if (orderedItem) {
+            const updatedQuantity = p.quantity - orderedItem.quantity;
+            const updatedProductBase = { ...p, quantity: updatedQuantity };
+            const status = await getProductStatus(updatedProductBase);
+            return { ...updatedProductBase, ...status };
+          }
+          return p;
+        })
+      );
+      setProducts(updatedProducts);
+    });
+  };
 
   return (
     <>
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
             <Logo />
-        </div>
-      </header>
-
-      <main className="container mx-auto p-4 md:p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
-            <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
-          </div>
-           <Button onClick={() => setAddSheetOpen(true)}>
+             <Button onClick={() => setAddSheetOpen(true)} className='hidden sm:inline-flex'>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Produto
             </Button>
         </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="flex flex-col space-y-3">
-                <Skeleton className="h-[200px] w-full rounded-xl" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-4 w-3/5" />
-                </div>
+      </header>
+        
+      <main className="container mx-auto p-4 md:p-6">
+        <Tabs defaultValue="inventory">
+          <div className="mb-6 flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="inventory">Estoque</TabsTrigger>
+              <TabsTrigger value="orders">Pedidos</TabsTrigger>
+            </TabsList>
+             <Button onClick={() => setAddSheetOpen(true)} className='sm:hidden'>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar
+            </Button>
+          </div>
+          <TabsContent value="inventory">
+            <div className="mb-6">
+                <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
+                <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
+            </div>
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-3">
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-4/5" />
+                      <Skeleton className="h-4 w-3/5" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSellClick={() => setSelectedProductForSale(product)}
-                onAlertClick={() => setSelectedProductForAlert(product)}
-              />
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onSellClick={() => setSelectedProductForSale(product)}
+                    onAlertClick={() => setSelectedProductForAlert(product)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="orders">
+             <div className="mb-6">
+                <h2 className="font-headline text-3xl font-bold tracking-tight">Registro de Pedidos</h2>
+                <p className="text-muted-foreground">Crie um novo pedido para um cliente.</p>
+            </div>
+             <OrderRegistrationForm 
+                products={products}
+                onSubmit={handleOrderSubmit}
+                isPending={isPending}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <AddProductSheet
