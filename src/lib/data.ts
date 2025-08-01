@@ -1,5 +1,7 @@
 import type { Product } from './types';
 
+// This file is now a backup and can be used to seed the database.
+// The main application now fetches data from Firestore.
 export const products: Product[] = [
   {
     id: 'prod_001',

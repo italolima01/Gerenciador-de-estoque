@@ -1,11 +1,12 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useMemo, useCallback } from 'react';
-import { PlusCircle, Search, Loader2 } from 'lucide-react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
+import { PlusCircle, Search } from 'lucide-react';
 
 import type { Order, Product, ProductWithStatus } from '@/lib/types';
-import { getInitialProducts, getProductStatus, searchProducts, updateProductsAndGetStatus } from '@/app/actions';
+import { getInitialProducts } from '@/app/actions';
+import { getOrders, addOrder, updateOrder, cancelOrder, updateOrderStatus, addProduct as addFsProduct, deleteProduct as deleteFsProduct, updateProductQuantity } from '@/lib/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -26,18 +27,6 @@ import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
 
-
-// Debounce helper function
-function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
-  let timeout: NodeJS.Timeout | null = null;
-
-  return (...args: Parameters<F>): void => {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-      timeout = setTimeout(() => func(...args), waitFor);
-  };
-}
 
 function removeAccents(str: string) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -65,17 +54,27 @@ export function Dashboard() {
   const { toast } = useToast();
 
   useEffect(() => {
-    getInitialProducts().then((initialProducts) => {
-      setProducts(initialProducts);
-      setIsLoading(false);
-    });
+    async function loadData() {
+        setIsLoading(true);
+        const [initialProducts, initialOrders] = await Promise.all([
+            getInitialProducts(),
+            getOrders()
+        ]);
+        setProducts(initialProducts);
+        setOrders(initialOrders);
+        setIsLoading(false);
+    }
+    loadData();
   }, []);
 
   const handleAddProduct = (newProduct: Product) => {
     startTransition(async () => {
-      // Since the new product doesn't have sales data, we can create a default status.
+      const { id, ...productData } = newProduct;
+      const newProductId = await addFsProduct(productData);
+      
       const newProductWithStatus: ProductWithStatus = { 
         ...newProduct, 
+        id: newProductId,
         zone: 'green',
         restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
         confidenceLevel: 'low'
@@ -86,20 +85,17 @@ export function Dashboard() {
   };
 
   const handleSellProduct = (product: ProductWithStatus, quantitySold: number) => {
-    const updatedProductBase = {
-      ...product,
-      quantity: Math.max(0, product.quantity - quantitySold),
-    };
-
     startTransition(async () => {
-       const updatedProducts = await updateProductsAndGetStatus(products, { [product.id]: updatedProductBase.quantity });
-       setProducts(updatedProducts);
+       const newQuantity = Math.max(0, product.quantity - quantitySold);
+       await updateProductQuantity(product.id, newQuantity);
+       setProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: newQuantity } : p));
        setSelectedProductForSale(null);
     });
   };
 
   const handleDeleteProduct = (productId: string) => {
-    startTransition(() => {
+    startTransition(async () => {
+        await deleteFsProduct(productId);
         setProducts(prev => prev.filter(p => p.id !== productId));
         setSelectedProductForDelete(null);
         toast({
@@ -111,25 +107,34 @@ export function Dashboard() {
   
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(async () => {
-      const updatedProductQuantities: { [productId: string]: number } = {};
-      for (const item of newOrderData.items) {
-          const product = products.find(p => p.id === item.productId);
-          if(product) {
-            updatedProductQuantities[item.productId] = product.quantity - item.quantity;
-          }
-      }
+        const productUpdates = newOrderData.items.map(item => {
+            const product = products.find(p => p.id === item.productId)!;
+            return { id: product.id, newQuantity: product.quantity - item.quantity };
+        });
 
-      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
-      setProducts(updatedProducts);
+        const orderPayload: Omit<Order, 'id'> = {
+            ...newOrderData,
+            status: 'Pendente',
+            createdAt: new Date().toISOString(),
+        };
 
-      const newOrder: Order = {
-        ...newOrderData,
-        id: `order_${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        status: 'Pendente',
-      };
-      setOrders(prev => [newOrder, ...prev]);
-      setRegisterOrderSheetOpen(false);
+        const newOrderId = await addOrder(orderPayload, productUpdates);
+        
+        const newOrder: Order = {
+            ...orderPayload,
+            id: newOrderId,
+        };
+
+        setOrders(prev => [newOrder, ...prev]);
+
+        // Update local product state
+        const updatedProducts = products.map(p => {
+            const update = productUpdates.find(u => u.id === p.id);
+            return update ? { ...p, quantity: update.newQuantity } : p;
+        });
+        setProducts(updatedProducts);
+
+        setRegisterOrderSheetOpen(false);
     });
   };
 
@@ -140,26 +145,27 @@ export function Dashboard() {
 
       const productQuantityChanges: {[productId: string]: number} = {};
 
+      // Add back original quantities
       for (const item of originalOrder.items) {
           productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
       }
-
+      // Subtract new quantities
       for (const item of updatedOrderData.items) {
           productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) - item.quantity;
       }
 
-      const updatedProductQuantities: { [productId: string]: number } = {};
-      for (const productId in productQuantityChanges) {
-          const product = products.find(p => p.id === productId);
-          if (product) {
-              updatedProductQuantities[productId] = product.quantity + productQuantityChanges[productId];
-          }
-      }
-
-      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
-      setProducts(updatedProducts);
+      await updateOrder(updatedOrderData.id, updatedOrderData, productQuantityChanges, products);
       
       setOrders(prev => prev.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
+      
+      const updatedProducts = products.map(p => {
+          if(productQuantityChanges[p.id]) {
+              return { ...p, quantity: p.quantity + productQuantityChanges[p.id] };
+          }
+          return p;
+      });
+      setProducts(updatedProducts);
+
       setSelectedOrderForEdit(null);
     });
   }
@@ -171,37 +177,38 @@ export function Dashboard() {
 
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(async () => {
-      const updatedProductQuantities: { [productId: string]: number } = {};
-      for (const item of orderToCancel.items) {
-          const product = products.find(p => p.id === item.productId);
-          if (product) {
-              updatedProductQuantities[item.productId] = product.quantity + item.quantity;
-          }
-      }
+        await cancelOrder(orderToCancel, products);
+        
+        setOrders(prev => prev.filter(o => o.id !== orderToCancel.id));
+        
+        const restoredProducts = products.map(p => {
+            const canceledItem = orderToCancel.items.find(item => item.productId === p.id);
+            if (canceledItem) {
+                return { ...p, quantity: p.quantity + canceledItem.quantity };
+            }
+            return p;
+        });
+        setProducts(restoredProducts);
 
-      const updatedProducts = await updateProductsAndGetStatus(products, updatedProductQuantities);
-      setProducts(updatedProducts);
+        setSelectedOrderForCancel(null);
 
-      setOrders(prev => prev.filter(o => o.id !== orderToCancel.id));
-      
-      setSelectedOrderForCancel(null);
-
-      toast({
-          title: "Pedido Cancelado",
-          description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
-      });
+        toast({
+            title: "Pedido Cancelado",
+            description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
+        });
     });
   }
 
   const handleCompleteOrder = (orderId: string, note?: string) => {
-      startTransition(() => {
+      startTransition(async () => {
+        await updateOrderStatus(orderId, 'Concluído', note);
+
         setOrders(prev => prev.map(o => o.id === orderId ? { 
             ...o, 
             status: 'Concluído', 
-            notes: note ? (o.notes ? `${o.notes}\\n---\\n${note}` : note) : o.notes 
+            notes: note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes 
         } : o));
         
-        // Close all dialogs related to completion
         setOrderToComplete(null);
         setConfirmCompleteOpen(false);
         setAddNoteDialogOpen(false);
@@ -227,7 +234,7 @@ export function Dashboard() {
   const headerButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)}>
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Registrar Pedido
             </Button>
@@ -235,19 +242,19 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)}>
+            <Button onClick={() => setAddDialogOpen(true)} disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab]);
+  }, [activeTab, isPending]);
   
   const mobileHeaderButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm" disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Pedido
             </Button>
@@ -255,14 +262,14 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)} size="sm">
+            <Button onClick={() => setAddDialogOpen(true)} size="sm" disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab]);
+  }, [activeTab, isPending]);
 
 
   return (
@@ -341,6 +348,7 @@ export function Dashboard() {
                     onOrderEdit={setSelectedOrderForEdit}
                     onOrderCancel={setSelectedOrderForCancel}
                     onMarkAsComplete={handleOpenCompleteDialog}
+                    isLoading={isLoading}
                 />
               </CardContent>
             </Card>
@@ -448,6 +456,3 @@ export function Dashboard() {
       )}
     </>
   );
-
-    
-

@@ -4,8 +4,9 @@
 import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
 import { type GenerateRestockAlertOutput } from '@/ai/flows/generate-restock-alert';
 import { generateMultipleRestockAlerts } from '@/ai/flows/generate-multiple-restock-alerts';
-import { products as mockProducts } from '@/lib/data';
 import type { Product, ProductWithStatus } from '@/lib/types';
+import { getProducts as getFsProducts } from '@/lib/firestore';
+
 
 async function getProductsWithStatus(products: Product[]): Promise<ProductWithStatus[]> {
   if (products.length === 0) {
@@ -53,62 +54,9 @@ async function getProductsWithStatus(products: Product[]): Promise<ProductWithSt
 }
 
 export async function getInitialProducts(): Promise<ProductWithStatus[]> {
-  return getProductsWithStatus(mockProducts);
+  const products = await getFsProducts();
+  return getProductsWithStatus(products);
 }
-
-export async function getProductStatus(product: Product): Promise<ProductWithStatus> {
-   const results = await getProductsWithStatus([product]);
-   return results[0];
-}
-
-export async function updateProductsAndGetStatus(
-  currentProducts: ProductWithStatus[],
-  updatedProductQuantities: { [productId: string]: number }
-): Promise<ProductWithStatus[]> {
-    const productIdsToUpdate = Object.keys(updatedProductQuantities);
-    if (productIdsToUpdate.length === 0) {
-        return currentProducts;
-    }
-
-    // Create a new list of all products with updated quantities
-    const allProductsWithUpdatedQuantities: Product[] = currentProducts.map(p => {
-        if (updatedProductQuantities[p.id] !== undefined) {
-            return { ...p, quantity: updatedProductQuantities[p.id] };
-        }
-        return p;
-    });
-
-    // Get the products that actually need their status (re)calculated
-    const productsToRecalculate = allProductsWithUpdatedQuantities.filter(p => productIdsToUpdate.includes(p.id));
-    
-    const statusUpdates = await getProductsWithStatus(productsToRecalculate);
-
-    // Merge the new statuses back into the full product list
-    const updatedProductsWithStatus = allProductsWithUpdatedQuantities.map(p => {
-        const newStatus = statusUpdates.find(s => s.id === p.id);
-        const currentFullProduct = currentProducts.find(cp => cp.id === p.id);
-        
-        if (newStatus) {
-            return { ...p, ...newStatus };
-        }
-        // If no new status was generated, it means it wasn't in the list to be recalculated.
-        // We need to find its old status from the original `currentProducts` list.
-        if (currentFullProduct) {
-            const { id, zone, restockRecommendation, confidenceLevel, ...productData } = currentFullProduct;
-            return { ...p, id, zone, restockRecommendation, confidenceLevel };
-        }
-        // Fallback for a product that somehow didn't exist before.
-        return {
-             ...p,
-             zone: 'yellow',
-             restockRecommendation: 'Status not available.',
-             confidenceLevel: 'low',
-        };
-    });
-
-    return updatedProductsWithStatus;
-}
-
 
 export async function searchProducts(query: string, allProductNames: string[]): Promise<string[]> {
   if (!query) {

@@ -21,9 +21,11 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
 import { MoreHorizontal, Edit, XCircle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Skeleton } from './ui/skeleton';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
+  isLoading: boolean;
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
   onOrderCancel: (order: Order) => void;
@@ -36,13 +38,23 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+  if (isLoading) {
+      return (
+          <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                   <Skeleton key={i} className="h-16 w-full" />
+              ))}
+          </div>
+      )
+  }
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
         <h3 className="text-xl font-semibold tracking-tight text-muted-foreground">Nenhum Pedido Registrado</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Vá para a aba "Registrar Pedido" para criar o primeiro.
+          Use o botão "Registrar Pedido" para criar o primeiro.
         </p>
       </div>
     );
