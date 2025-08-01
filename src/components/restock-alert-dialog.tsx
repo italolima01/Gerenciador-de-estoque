@@ -30,9 +30,20 @@ const recommendationMap: { [key: string]: string } = {
     green: 'Nível de estoque ideal. Nenhuma ação de reabastecimento é necessária no momento.',
 };
 
+function getZoneForQuantity(quantity: number): 'red' | 'yellow' | 'green' {
+    if (quantity <= 20) {
+        return 'red';
+    }
+    if (quantity <= 50) {
+        return 'yellow';
+    }
+    return 'green';
+}
+
 export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAlertDialogProps) {
-    const zoneInfo = zoneInfoMap[product.zone] || zoneInfoMap.yellow;
-    const recommendation = recommendationMap[product.zone] || recommendationMap.yellow;
+    const quantityZone = getZoneForQuantity(product.quantity);
+    const zoneInfo = zoneInfoMap[quantityZone];
+    const recommendation = recommendationMap[quantityZone];
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -61,8 +72,14 @@ export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAle
             </p>
           </div>
            <div className="flex items-center justify-between rounded-lg border p-4">
-                <span className="text-sm font-medium text-muted-foreground">Nível de Confiança</span>
+                <span className="text-sm font-medium text-muted-foreground">Nível de Confiança da IA</span>
                 <span className="font-semibold capitalize text-foreground">{product.confidenceLevel}</span>
+            </div>
+             <div className="rounded-lg border bg-background/50 p-4">
+                <h4 className="font-semibold text-foreground">Análise da IA</h4>
+                <p className="mt-2 text-sm text-muted-foreground">
+                {product.restockRecommendation}
+                </p>
             </div>
         </div>
       </DialogContent>
