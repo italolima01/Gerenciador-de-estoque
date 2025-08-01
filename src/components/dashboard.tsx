@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useTransition, useMemo, useCallback } from 'react';
 import { PlusCircle, Search, Loader2 } from 'lucide-react';
 
 import type { ProductWithStatus, Product, Order } from '@/lib/types';
@@ -21,6 +21,7 @@ import { Input } from './ui/input';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
+import { EditOrderSheet } from './edit-order-sheet';
 
 // Debounce helper function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -46,6 +47,7 @@ export function Dashboard() {
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
   const [selectedProductForDelete, setSelectedProductForDelete] = useState<ProductWithStatus | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
+  const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProductNames, setFilteredProductNames] = useState<string[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -120,6 +122,42 @@ export function Dashboard() {
       setOrders(prev => [newOrder, ...prev]);
     });
   };
+
+  const handleOrderUpdate = (updatedOrderData: Order) => {
+    startTransition(async () => {
+      // Logic to revert stock from original order and deduct from new order
+      const originalOrder = orders.find(o => o.id === updatedOrderData.id);
+      if (!originalOrder) return;
+
+      const productQuantityChanges: {[productId: string]: number} = {};
+
+      // Add back original quantities
+      for (const item of originalOrder.items) {
+          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
+      }
+
+      // Subtract new quantities
+      for (const item of updatedOrderData.items) {
+          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) - item.quantity;
+      }
+
+      const updatedProducts = await Promise.all(
+          products.map(async (p) => {
+              if (productQuantityChanges[p.id]) {
+                  const updatedQuantity = p.quantity + productQuantityChanges[p.id];
+                  const updatedProductBase = { ...p, quantity: updatedQuantity };
+                  const status = await getProductStatus(updatedProductBase);
+                  return { ...updatedProductBase, ...status };
+              }
+              return p;
+          })
+      );
+
+      setProducts(updatedProducts);
+      setOrders(prev => prev.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
+      setSelectedOrderForEdit(null);
+    });
+  }
 
   const handleOrderStatusChange = (orderId: string, status: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
@@ -254,6 +292,7 @@ export function Dashboard() {
                     orders={orders}
                     onStatusChange={handleOrderStatusChange}
                     onOrderSelect={setSelectedOrderForDetails}
+                    onOrderEdit={setSelectedOrderForEdit}
                 />
               </CardContent>
             </Card>
@@ -301,6 +340,17 @@ export function Dashboard() {
           order={selectedOrderForDetails}
           isOpen={!!selectedOrderForDetails}
           onOpenChange={() => setSelectedOrderForDetails(null)}
+        />
+      )}
+
+      {selectedOrderForEdit && (
+        <EditOrderSheet
+          order={selectedOrderForEdit}
+          products={products}
+          isOpen={!!selectedOrderForEdit}
+          onOpenChange={() => setSelectedOrderForEdit(null)}
+          onOrderUpdate={handleOrderUpdate}
+          isPending={isPending}
         />
       )}
     </>

@@ -15,16 +15,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Edit } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
   onStatusChange: (orderId: string, status: Order['status']) => void;
   onOrderSelect: (order: Order) => void;
+  onOrderEdit: (order: Order) => void;
 }
 
 const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
@@ -33,7 +35,7 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect, onOrderEdit }: RegisteredOrdersListProps) {
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
@@ -85,6 +87,11 @@ export function RegisteredOrdersList({ orders, onStatusChange, onOrderSelect }: 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar Pedido
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onStatusChange(order.id, 'Concluído')}>
                         Marcar como Concluído
                     </DropdownMenuItem>
