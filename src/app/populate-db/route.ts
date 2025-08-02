@@ -1,7 +1,9 @@
 
-import type { Product } from './types';
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/firebase';
+import { ref, set } from 'firebase/database';
 
-export const products: Product[] = [
+const products = [
   {
     id: 'prod_001',
     name: 'Vinho Tinto Cabernet',
@@ -75,3 +77,21 @@ export const products: Product[] = [
     daysToRestock: 20,
   },
 ];
+
+export async function GET() {
+  try {
+    const productsRef = ref(db, 'products');
+    const dataToUpload = products.reduce((acc, product) => {
+        const { id, ...rest } = product;
+        acc[id] = rest;
+        return acc;
+    }, {} as any);
+
+    await set(productsRef, dataToUpload);
+    
+    return NextResponse.json({ success: true, message: 'Database populated successfully.' });
+  } catch (error) {
+    console.error("Error populating database: ", error);
+    return NextResponse.json({ success: false, message: 'Failed to populate database.' }, { status: 500 });
+  }
+}

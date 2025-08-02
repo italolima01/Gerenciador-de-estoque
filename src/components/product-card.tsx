@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreVertical, Bell, ShoppingCart, Trash2 } from 'lucide-react';
+import { MoreVertical, Trash2 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 import type { ProductWithStatus } from '@/lib/types';
@@ -19,14 +19,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: ProductWithStatus;
-  onSellClick: () => void;
   onAlertClick: () => void;
   onDeleteClick: () => void;
 }
@@ -69,7 +67,7 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
 }
 
 
-export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick }: ProductCardProps) {
+export function ProductCard({ product, onAlertClick, onDeleteClick }: ProductCardProps) {
   const expirationDateColor = getExpirationDateColor(product.expirationDate);
   const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
   const { zone, variant } = getZoneForQuantity(product.quantity);
@@ -77,9 +75,8 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
   return (
     <Card 
         className="flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer"
-        onClick={onAlertClick}
     >
-      <CardHeader className="flex flex-row items-start p-4">
+      <CardHeader className="flex flex-row items-start p-4 pb-2" onClick={onAlertClick}>
         <div className="flex-grow">
             <div className="flex items-start justify-between">
             <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
@@ -88,13 +85,12 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
                 </Badge>
             </div>
             <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
-            <CardDescription className={cn("mt-1 font-medium", expirationDateColor)}>
-                Vencimento: {formattedExpirationDate}
-            </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow p-4 pt-0">
-        
+      <CardContent className="flex-grow p-4 pt-0" onClick={onAlertClick}>
+        <CardDescription className={cn("font-medium", expirationDateColor)}>
+            Vencimento: {formattedExpirationDate}
+        </CardDescription>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>
@@ -109,11 +105,6 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onSellClick}>
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              <span>Registrar Venda</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
               <Trash2 className="mr-2 h-4 w-4" />
               <span>Excluir Produto</span>

@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, addYears } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
@@ -34,10 +34,13 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.string().refine(value => !isNaN(parseFloat(value.replace(/\./g, '').replace(',', '.'))), { message: "Preço inválido." })
+  price: z.string()
+    .refine(value => /^\d{1,3}(\.\d{3})*,\d{2}$/.test(value), { message: "Preço inválido. Use o formato 1.234,56" })
     .transform(value => parseFloat(value.replace(/\./g, '').replace(',', '.')))
     .refine(value => value >= 0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
+  averageDailySales: z.coerce.number().int().min(0, { message: 'O valor não pode ser negativo.' }),
+  daysToRestock: z.coerce.number().int().min(0, { message: 'O valor não pode ser negativo.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,7 +48,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface AddProductDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onProductAdd: (product: Product) => void;
+  onProductAdd: (product: Omit<Product, 'id'>) => void;
   isPending: boolean;
 }
 
@@ -55,44 +58,46 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      price: '',
+      price: undefined,
       quantity: undefined,
+      averageDailySales: 0,
+      daysToRestock: 7,
     },
   });
   
   React.useEffect(() => {
     if (!isOpen) {
-      form.reset({
-        name: '',
-        price: '',
-        quantity: undefined,
-        expirationDate: undefined
-      });
+      form.reset();
     }
   }, [isOpen, form]);
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: any) => {
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
-    value = value.replace(/\D/g, ""); // Remove tudo que não for dígito
-    value = value.replace(/(\d)(\d{2})$/, '$1,$2'); // Coloca a vírgula antes dos últimos 2 dígitos
-    value = value.replace(/(?=(\d{3})+(\D))\B/g, "."); // Adiciona ponto como separador de milhar
-    field.onChange(value);
+    value = value.replace(/\D/g, "");
+    value = value.replace(/^0+/, "");
+    
+    if(value.length < 3) {
+      value = '0'.repeat(3 - value.length) + value;
+    }
+
+    value = value.replace(/(\d)(\d{2})$/, '$1,$2');
+    value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
+    
+    form.setValue('price', value, { shouldValidate: true });
   };
 
+
   function onSubmit(values: FormValues) {
-    const newProduct: Product = {
+    const newProduct: Omit<Product, 'id'> = {
       ...values,
-      id: `prod_${Date.now()}`,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
-      averageDailySales: 0, // Default value
-      daysToRestock: 0, // Default value
     };
     onProductAdd(newProduct);
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="font-headline">Adicionar Novo Produto</DialogTitle>
           <DialogDescription>
@@ -122,7 +127,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 50" {...field} value={field.value ?? ''} />
+                      <Input type="number" placeholder="Ex: 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -138,8 +143,37 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       <Input
                         placeholder="12,99"
                         {...field}
-                        onChange={(e) => handlePriceChange(e, field)}
+                        onChange={handlePriceChange}
+                        value={field.value || ''}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+             <div className="flex gap-4">
+               <FormField
+                control={form.control}
+                name="averageDailySales"
+                render={({ field }) => (
+                  <FormItem className="w-1/2">
+                    <FormLabel>Venda Média Diária</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="daysToRestock"
+                render={({ field }) => (
+                  <FormItem className="w-1/2">
+                    <FormLabel>Dias para Reabastecer</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 7" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -171,8 +205,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       <Calendar
                         mode="single"
                         captionLayout="buttons"
-                        fromYear={new Date().getFullYear()}
-                        toYear={new Date().getFullYear() + 10}
+                        fromDate={new Date()}
+                        toDate={addYears(new Date(), 10)}
                         selected={field.value}
                         onSelect={(date) => {
                           field.onChange(date);

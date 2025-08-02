@@ -19,11 +19,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle, Undo2 } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Skeleton } from './ui/skeleton';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
+  isLoading: boolean;
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
   onOrderCancel: (order: Order) => void;
@@ -36,7 +38,26 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+  if (isLoading) {
+    return (
+        <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border-b">
+                    <div className="space-y-2 flex-1">
+                        <Skeleton className="h-5 w-1/3" />
+                        <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+  }
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
@@ -47,13 +68,6 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
       </div>
     );
   }
-  
-  const handleReopenOrder = (order: Order) => {
-    // This is a placeholder for potential future functionality
-    // For now, it could simply call onOrderEdit or a new handler
-    onOrderEdit(order); // Or create a new handler to change status back to 'Pendente'
-  }
-
 
   return (
     <Table>
