@@ -77,18 +77,16 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     name: "items",
   });
   
-  const watchItems = form.watch('items');
+  const watchedItems = form.watch('items');
 
-  const availableProducts = products.filter(p => p.quantity > 0 && !watchItems.some(item => item.productId === p.id));
+  const availableProducts = products.filter(p => p.quantity > 0 && !watchedItems.some(item => item.productId === p.id));
 
-  const totalOrderValue = React.useMemo(() => {
-    return watchItems.reduce((total, item) => {
-        const product = products.find(p => p.id === item.productId);
-        const price = product?.price || 0;
-        const quantity = Number(item.quantity) || 0;
-        return total + (price * quantity);
-    }, 0);
-  }, [watchItems, products]);
+  const totalOrderValue = watchedItems.reduce((total, item) => {
+    const product = products.find(p => p.id === item.productId);
+    const price = product?.price || 0;
+    const quantity = Number(item.quantity) || 0;
+    return total + (price * quantity);
+  }, 0);
 
   function handleConfirmation(values: FormValues) {
     // Validate stock availability before opening confirmation
