@@ -7,7 +7,17 @@ import { products as initialProducts } from '@/lib/data';
 export async function GET() {
   try {
     const productsRef = ref(db, 'products');
+    
+    // Transform data to match the structure where Firebase key is the unique ID
+    // and the product data (including its own 'id' field) is the value.
     const dataToUpload = initialProducts.reduce((acc, product) => {
+        // The product object itself already contains the ID.
+        // We will let Firebase generate the unique key for the entry.
+        // The prompt seems to imply a different structure. Let's fix this to be consistent.
+        // The issue is that getProducts expects an object where keys are firebase IDs.
+        // And `addProduct` uses push to create new ones.
+        // The initial data has hardcoded IDs. When we use set, it overwrites the whole `products` node.
+        // Let's use the product id as the key for initial population.
         acc[product.id] = product;
         return acc;
     }, {} as any);
