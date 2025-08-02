@@ -111,36 +111,22 @@ export function Dashboard() {
     });
   };
   
-    const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+  const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(async () => {
-      const productUpdates: { [productId: string]: number } = {};
-      
-      for (const item of newOrderData.items) {
-          const product = products.find(p => p.id === item.productId);
-          if(product && product.quantity >= item.quantity) {
-            productUpdates[item.productId] = product.quantity - item.quantity;
-          } else {
-             toast({
-                variant: "destructive",
-                title: "Erro de Estoque",
-                description: `O produto "${product?.name || item.productName}" não tem estoque suficiente.`,
-            });
-            return; // Abort submission
-          }
-      }
       try {
-        await registerOrder(newOrderData, productUpdates);
+        await registerOrder(newOrderData);
         setRegisterOrderSheetOpen(false);
         toast({
           title: "Pedido Registrado!",
           description: "O novo pedido foi criado com sucesso.",
         });
       } catch (error) {
-        console.error("Failed to register order:", error)
+        console.error("Failed to register order:", error);
+        const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
         toast({
             variant: "destructive",
             title: "Erro ao Registrar Pedido",
-            description: "Não foi possível salvar o novo pedido. Tente novamente.",
+            description: errorMessage,
         });
       }
     });
@@ -150,28 +136,31 @@ export function Dashboard() {
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(async () => {
       const originalOrder = orders.find(o => o.id === updatedOrderData.id);
-      if (!originalOrder) return;
+      if (!originalOrder) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Atualizar",
+            description: "Pedido original não encontrado.",
+        });
+        return;
+      };
 
-      const productQuantityChanges: {[productId: string]: number} = {};
-      // Add back original quantities
-      for (const item of originalOrder.items) {
-          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
+      try {
+        await updateOrder(updatedOrderData, originalOrder);
+        setSelectedOrderForEdit(null);
+         toast({
+          title: "Pedido Atualizado!",
+          description: "As alterações no pedido foram salvas com sucesso.",
+        });
+      } catch (error) {
+         console.error("Failed to update order:", error);
+         const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
+         toast({
+            variant: "destructive",
+            title: "Erro ao Atualizar Pedido",
+            description: errorMessage,
+        });
       }
-      // Subtract new quantities
-      for (const item of updatedOrderData.items) {
-          productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) - item.quantity;
-      }
-
-      const productUpdates: { [productId: string]: number } = {};
-      for (const productId in productQuantityChanges) {
-          const product = products.find(p => p.id === productId);
-          if (product) {
-              productUpdates[productId] = product.quantity + productQuantityChanges[productId];
-          }
-      }
-
-      await updateOrder(updatedOrderData, productUpdates);
-      setSelectedOrderForEdit(null);
     });
   }
   
@@ -182,21 +171,23 @@ export function Dashboard() {
 
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(async () => {
-      const productUpdates: { [productId: string]: number } = {};
-      for (const item of orderToCancel.items) {
-          const product = products.find(p => p.id === item.productId);
-          if (product) {
-              productUpdates[item.productId] = product.quantity + item.quantity;
-          }
+      try {
+        await cancelOrder(orderToCancel);
+        setSelectedOrderForCancel(null);
+
+        toast({
+            title: "Pedido Cancelado",
+            description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
+        });
+      } catch (error) {
+         console.error("Failed to cancel order:", error);
+         const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
+         toast({
+            variant: "destructive",
+            title: "Erro ao Cancelar Pedido",
+            description: errorMessage,
+        });
       }
-
-      await cancelOrder(orderToCancel, productUpdates);
-      setSelectedOrderForCancel(null);
-
-      toast({
-          title: "Pedido Cancelado",
-          description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
-      });
     });
   }
 

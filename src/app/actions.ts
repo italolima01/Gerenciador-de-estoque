@@ -8,12 +8,12 @@ import { db } from '@/lib/firebase';
 import { 
     collection, 
     doc, 
-    setDoc, 
+    addDoc,
     deleteDoc, 
     updateDoc, 
     runTransaction,
-    addDoc,
     getDoc,
+    serverTimestamp,
 } from 'firebase/firestore';
 
 
@@ -55,46 +55,109 @@ export async function deleteProduct(productId: string): Promise<void> {
     await deleteDoc(productRef);
 }
 
-export async function registerOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'status'>, productUpdates: { [productId: string]: number }): Promise<void> {
+export async function registerOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<void> {
     
     await runTransaction(db, async (transaction) => {
         const newOrderRef = doc(collection(db, "orders"));
-        const newOrder: Order = {
+        
+        // 1. Validate stock and prepare product updates
+        const productUpdates: { ref: any, newQuantity: number }[] = [];
+        for (const item of orderData.items) {
+            const productRef = doc(db, 'products', item.productId);
+            const productDoc = await transaction.get(productRef);
+            if (!productDoc.exists()) {
+                throw new Error(`Produto com ID ${item.productId} não encontrado.`);
+            }
+            const currentQuantity = productDoc.data().quantity;
+            if (currentQuantity < item.quantity) {
+                throw new Error(`Estoque insuficiente para ${item.productName}.`);
+            }
+            productUpdates.push({ ref: productRef, newQuantity: currentQuantity - item.quantity });
+        }
+
+        // 2. Create the order
+        const newOrder: Omit<Order, 'id'> = {
             ...orderData,
-            id: newOrderRef.id,
             createdAt: new Date().toISOString(),
             status: 'Pendente',
         };
         transaction.set(newOrderRef, newOrder);
+        transaction.update(newOrderRef, { id: newOrderRef.id });
 
-        for (const [productId, newQuantity] of Object.entries(productUpdates)) {
-            const productRef = doc(db, 'products', productId);
-            transaction.update(productRef, { quantity: newQuantity });
+
+        // 3. Apply stock updates
+        for (const update of productUpdates) {
+            transaction.update(update.ref, { quantity: update.newQuantity });
         }
     });
 }
 
-export async function updateOrder(updatedOrderData: Order, productUpdates: { [productId: string]: number }): Promise<void> {
+export async function updateOrder(updatedOrderData: Order, originalOrder: Order): Promise<void> {
     await runTransaction(db, async (transaction) => {
         const orderRef = doc(db, 'orders', updatedOrderData.id);
-        transaction.set(orderRef, updatedOrderData);
 
-        for (const [productId, newQuantity] of Object.entries(productUpdates)) {
+        const productQuantityChanges: { [productId: string]: number } = {};
+        
+        // Add back original quantities
+        for (const item of originalOrder.items) {
+            productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) + item.quantity;
+        }
+        
+        // Subtract new quantities
+        for (const item of updatedOrderData.items) {
+            productQuantityChanges[item.productId] = (productQuantityChanges[item.productId] || 0) - item.quantity;
+        }
+
+        // Validate stock and prepare updates
+        const productUpdates: { ref: any, newQuantity: number }[] = [];
+        for (const productId in productQuantityChanges) {
+            const change = productQuantityChanges[productId];
+            if (change === 0) continue;
+
             const productRef = doc(db, 'products', productId);
-            transaction.update(productRef, { quantity: newQuantity });
+            const productDoc = await transaction.get(productRef);
+
+            if (!productDoc.exists()) {
+                throw new Error(`Produto com ID ${productId} não encontrado.`);
+            }
+            
+            const currentQuantity = productDoc.data().quantity;
+            const newQuantity = currentQuantity - change;
+
+            if (newQuantity < 0) {
+                 throw new Error(`Estoque insuficiente para o produto atualizado.`);
+            }
+            productUpdates.push({ ref: productRef, newQuantity: newQuantity });
+        }
+
+        // Apply updates
+        transaction.set(orderRef, updatedOrderData);
+        for (const update of productUpdates) {
+            transaction.update(update.ref, { quantity: update.newQuantity });
         }
     });
 }
 
 
-export async function cancelOrder(order: Order, productUpdates: { [productId: string]: number }): Promise<void> {
+export async function cancelOrder(order: Order): Promise<void> {
     await runTransaction(db, async (transaction) => {
         const orderRef = doc(db, 'orders', order.id);
-        transaction.update(orderRef, { status: 'Cancelado' });
 
-        for (const [productId, newQuantity] of Object.entries(productUpdates)) {
-            const productRef = doc(db, 'products', productId);
-            transaction.update(productRef, { quantity: newQuantity });
+        // Prepare stock updates
+        const productUpdates: { ref: any, newQuantity: number }[] = [];
+        for (const item of order.items) {
+            const productRef = doc(db, 'products', item.productId);
+            const productDoc = await transaction.get(productRef);
+            if (productDoc.exists()) {
+                const currentQuantity = productDoc.data().quantity;
+                productUpdates.push({ ref: productRef, newQuantity: currentQuantity + item.quantity });
+            }
+        }
+        
+        // Apply updates
+        transaction.update(orderRef, { status: 'Cancelado' });
+        for (const update of productUpdates) {
+            transaction.update(update.ref, { quantity: update.newQuantity });
         }
     });
 }
