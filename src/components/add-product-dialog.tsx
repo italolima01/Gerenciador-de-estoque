@@ -59,10 +59,10 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   });
   
   React.useEffect(() => {
-    if (!isOpen) {
+    if (!isPending && !isOpen) {
       form.reset();
     }
-  }, [isOpen, form]);
+  }, [isOpen, isPending, form]);
 
   function onSubmit(values: FormValues) {
     const newProductData: Omit<Product, 'id'> = {
@@ -184,3 +184,5 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     </Dialog>
   );
 }
+
+    
