@@ -101,14 +101,12 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   });
 
   const watchedItems = form.watch('items');
-  const totalOrderValue = React.useMemo(() => {
-    return watchedItems.reduce((total, item) => {
-      const product = products.find(p => p.id === item.productId);
-      const price = product?.price || 0;
-      const quantity = Number(item.quantity) || 0;
-      return total + (price * quantity);
-    }, 0);
-  }, [watchedItems, products]);
+  const totalOrderValue = watchedItems.reduce((total, item) => {
+    const product = products.find(p => p.id === item.productId);
+    const price = product?.price || 0;
+    const quantity = Number(item.quantity) || 0;
+    return total + (price * quantity);
+  }, 0);
 
 
   function getAvailableStock(productId: string): number {

@@ -81,14 +81,12 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
 
   const availableProducts = products.filter(p => p.quantity > 0 && !watchedItems.some(item => item.productId === p.id));
 
-  const totalOrderValue = React.useMemo(() => {
-    return watchedItems.reduce((total, item) => {
-        const product = products.find(p => p.id === item.productId);
-        const price = product?.price || 0;
-        const quantity = Number(item.quantity) || 0;
-        return total + (price * quantity);
-    }, 0);
-  }, [watchedItems, products]);
+  const totalOrderValue = watchedItems.reduce((total, item) => {
+    const product = products.find(p => p.id === item.productId);
+    const price = product?.price || 0;
+    const quantity = Number(item.quantity) || 0;
+    return total + (price * quantity);
+  }, 0);
 
 
   function handleConfirmation(values: FormValues) {
