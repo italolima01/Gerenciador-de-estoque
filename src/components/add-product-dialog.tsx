@@ -125,30 +125,26 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
               <FormField
                 control={form.control}
                 name="price"
-                render={({ field }) => {
-                    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                        let value = e.target.value;
-                        value = value.replace(/\D/g, "");
-                        value = value.replace(/(\d)(\d{2})$/, '$1,$2');
-                        value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
-                        field.onChange(value);
-                    };
-
-                    return (
-                        <FormItem className="w-1/2">
-                            <FormLabel>Preço (R$)</FormLabel>
-                            <FormControl>
-                            <Input
-                                placeholder="12,99"
-                                {...field}
-                                value={field.value || ''}
-                                onChange={handlePriceChange}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    );
-                }}
+                render={({ field }) => (
+                  <FormItem className="w-1/2">
+                    <FormLabel>Preço (R$)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="12,99"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          let value = e.target.value;
+                          value = value.replace(/\D/g, "");
+                          value = value.replace(/(\d)(\d{2})$/, '$1,$2');
+                          value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
             <FormField
