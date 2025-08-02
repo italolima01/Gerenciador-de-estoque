@@ -11,10 +11,10 @@ import {
   registerOrder, 
   updateOrder,
   cancelOrder,
-  completeOrder,
-  getProducts,
-  getOrders
+  completeOrder
 } from '@/app/actions';
+import { useProducts } from '@/hooks/use-products';
+import { useOrders } from '@/hooks/use-orders';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -42,10 +42,8 @@ function removeAccents(str: string) {
 
 
 export function Dashboard() {
-  const [products, setProducts] = useState<ProductWithStatus[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoadingProducts, setLoadingProducts] = useState(true);
-  const [isLoadingOrders, setLoadingOrders] = useState(true);
+  const { products, isLoading: isLoadingProducts, refetch: fetchProducts } = useProducts();
+  const { orders, isLoading: isLoadingOrders, refetch: fetchOrders } = useOrders();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
@@ -61,35 +59,11 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('inventory');
   const { toast } = useToast();
 
-  const fetchProducts = () => {
-    startTransition(async () => {
-        setLoadingProducts(true);
-        const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts);
-        setLoadingProducts(false);
-    });
-  };
-
-  const fetchOrders = () => {
-     startTransition(async () => {
-        setLoadingOrders(true);
-        const fetchedOrders = await getOrders();
-        setOrders(fetchedOrders);
-        setLoadingOrders(false);
-     });
-  };
-
-  useEffect(() => {
-    fetchProducts();
-    fetchOrders();
-  }, []);
-
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(async () => {
       try {
         await addProduct(newProductData);
         setAddDialogOpen(false);
-        fetchProducts();
         toast({
             title: "Produto Adicionado!",
             description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
@@ -109,7 +83,6 @@ export function Dashboard() {
       try {
         await deleteProduct(productId);
         setSelectedProductForDelete(null);
-        fetchProducts();
         toast({
             title: "Produto Excluído",
             description: "O produto foi removido do seu inventário.",
@@ -136,8 +109,6 @@ export function Dashboard() {
 
       await registerOrder(newOrderData, productUpdates);
       setRegisterOrderSheetOpen(false);
-      fetchOrders();
-      fetchProducts();
     });
   };
 
@@ -166,8 +137,6 @@ export function Dashboard() {
 
       await updateOrder(updatedOrderData, productUpdates);
       setSelectedOrderForEdit(null);
-      fetchOrders();
-      fetchProducts();
     });
   }
   
@@ -188,8 +157,6 @@ export function Dashboard() {
 
       await cancelOrder(orderToCancel, productUpdates);
       setSelectedOrderForCancel(null);
-      fetchOrders();
-      fetchProducts();
 
       toast({
           title: "Pedido Cancelado",
@@ -202,11 +169,9 @@ export function Dashboard() {
       startTransition(async () => {
         await completeOrder(orderId, note);
         
-        // Close all dialogs related to completion
         setOrderToComplete(null);
         setConfirmCompleteOpen(false);
         setAddNoteDialogOpen(false);
-        fetchOrders();
         
          toast({
             title: "Pedido Concluído!",

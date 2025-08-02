@@ -4,6 +4,8 @@
 import { useState, useEffect, useTransition } from 'react';
 import type { ProductWithStatus } from '@/lib/types';
 import { getProducts } from '@/app/actions';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 export function useProducts() {
   const [products, setProducts] = useState<ProductWithStatus[]>([]);
@@ -26,7 +28,17 @@ export function useProducts() {
     }
 
   useEffect(() => {
+    const productsRef = ref(db, 'products');
+    
+    // Initial fetch
     fetchProducts();
+
+    // Listen for realtime updates
+    const unsubscribe = onValue(productsRef, () => {
+        fetchProducts();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return { products, isLoading: isLoading || isStatusPending, refetch: fetchProducts };

@@ -33,8 +33,8 @@ import type { Product } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
-  quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
+  quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }).optional().or(z.literal('')),
+  price: z.string().refine(val => /^\d+([.,]\d{1,2})?$/.test(val), {message: 'Preço inválido'}).or(z.coerce.number()),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -54,7 +54,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     defaultValues: {
       name: '',
       quantity: 0,
-      price: 0,
+      price: '0',
     },
   });
   
@@ -64,9 +64,26 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     }
   }, [isOpen, form]);
 
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only numbers and a single comma or dot
+    const sanitizedValue = value.replace(/[^0-9,.]/g, '').replace(',', '.');
+    const parts = sanitizedValue.split('.');
+    if (parts.length > 2) {
+      // More than one dot, join them back and then only keep the first one
+      e.target.value = parts[0] + '.' + parts.slice(1).join('');
+    } else {
+      e.target.value = sanitizedValue;
+    }
+    form.setValue('price', e.target.value, { shouldValidate: true });
+  }
+
   function onSubmit(values: FormValues) {
+    const priceAsString = String(values.price).replace(',', '.');
     const newProduct: Omit<Product, 'id'> = {
       ...values,
+      quantity: Number(values.quantity) || 0,
+      price: parseFloat(priceAsString),
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
     };
     onProductAdd(newProduct);
@@ -104,7 +121,13 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="50" {...field} />
+                      <Input 
+                        type="number" 
+                        placeholder="50" 
+                        {...field} 
+                        onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                        value={field.value ?? ''}
+                        />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -118,10 +141,11 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                     <FormLabel>Preço (R$)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="12.99"
-                        step="0.01"
                         {...field}
+                        onChange={handlePriceChange}
                       />
                     </FormControl>
                     <FormMessage />

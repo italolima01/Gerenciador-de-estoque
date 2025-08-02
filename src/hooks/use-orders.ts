@@ -4,6 +4,9 @@
 import { useState, useEffect, useTransition } from 'react';
 import type { Order } from '@/lib/types';
 import { getOrders } from '@/app/actions';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -25,7 +28,15 @@ export function useOrders() {
   }
 
   useEffect(() => {
-    fetchOrders();
+    const ordersRef = ref(db, 'orders');
+
+    fetchOrders(); // Initial fetch
+
+    const unsubscribe = onValue(ordersRef, () => {
+        fetchOrders();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return { orders, isLoading: isLoading || isPending, refetch: fetchOrders };
