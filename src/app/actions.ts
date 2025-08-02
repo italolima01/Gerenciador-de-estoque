@@ -62,6 +62,9 @@ export async function getOrders(): Promise<Order[]> {
         return [];
     }
     const ordersObject = snapshot.val();
+    if (!ordersObject) {
+        return [];
+    }
     const orders: Order[] = Object.keys(ordersObject).map(key => ({
         ...ordersObject[key]
     }));
