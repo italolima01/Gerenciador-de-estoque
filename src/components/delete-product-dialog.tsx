@@ -12,11 +12,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import type { ProductWithStatus } from '@/lib/types';
+import type { Product } from '@/lib/types';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface DeleteProductDialogProps {
-  product: ProductWithStatus;
+  product: Product;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onDelete: () => void;

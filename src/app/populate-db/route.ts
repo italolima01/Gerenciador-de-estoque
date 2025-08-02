@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { ref, set } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 import { products as initialProducts } from '@/lib/data';
 
 export async function GET() {
@@ -14,13 +14,17 @@ export async function GET() {
 
     await set(productsRef, dataToUpload);
     
-    // Initialize orders as an empty object if it doesn't exist
+    // Initialize orders only if it doesn't exist
     const ordersRef = ref(db, 'orders');
-    await set(ordersRef, {});
+    const ordersSnapshot = await get(ordersRef);
+    if (!ordersSnapshot.exists()) {
+        await set(ordersRef, {});
+    }
     
     return NextResponse.json({ success: true, message: 'Database populated successfully.' });
   } catch (error) {
     console.error("Error populating database: ", error);
-    return NextResponse.json({ success: false, message: 'Failed to populate database.' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ success: false, message: 'Failed to populate database.', error: errorMessage }, { status: 500 });
   }
 }

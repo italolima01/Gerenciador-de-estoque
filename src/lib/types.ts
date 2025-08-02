@@ -7,11 +7,7 @@ export type Product = {
   expirationDate: string; // YYYY-MM-DD
 };
 
-export type ProductWithStatus = Product & {
-  zone: 'green' | 'yellow' | 'red';
-  restockRecommendation: string;
-  confidenceLevel: string;
-};
+export type ProductWithStatus = Product & GenerateRestockAlertOutput;
 
 export type OrderItem = {
   productId: string;
@@ -28,4 +24,11 @@ export type Order = {
   notes?: string;
   status: 'Pendente' | 'Concluído' | 'Cancelado';
   createdAt: string; // ISO date string
+};
+
+// Duplicating the AI output schema type here to avoid circular dependency
+export type GenerateRestockAlertOutput = {
+  zone: 'green' | 'yellow' | 'red';
+  restockRecommendation: string;
+  confidenceLevel: string;
 };

@@ -1,17 +1,18 @@
 
 'use client';
 
-import { useState, useTransition, useMemo, useEffect } from 'react';
+import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
 
-import type { Order, Product, ProductWithStatus } from '@/lib/types';
+import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
 import { 
   addProduct, 
   deleteProduct,
   registerOrder, 
   updateOrder,
   cancelOrder,
-  completeOrder
+  completeOrder,
+  getRestockAlert
 } from '@/app/actions';
 import { useProducts } from '@/hooks/use-products';
 import { useOrders } from '@/hooks/use-orders';
@@ -47,7 +48,7 @@ export function Dashboard() {
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
-  const [selectedProductForDelete, setSelectedProductForDelete] = useState<ProductWithStatus | null>(null);
+  const [selectedProductForDelete, setSelectedProductForDelete] = useState<Product | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
@@ -57,7 +58,20 @@ export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState('inventory');
+  const [productAlerts, setProductAlerts] = useState<Record<string, GenerateRestockAlertOutput>>({});
   const { toast } = useToast();
+  
+  const fetchProductAlert = useCallback(async (product: Product) => {
+    if (!productAlerts[product.id]) { // Fetch only if not already fetched
+      const alert = await getRestockAlert(product);
+      setProductAlerts(prev => ({ ...prev, [product.id]: alert }));
+    }
+  }, [productAlerts]);
+
+  useEffect(() => {
+    products.forEach(p => fetchProductAlert(p));
+  }, [products, fetchProductAlert]);
+
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(async () => {
@@ -299,7 +313,7 @@ export function Dashboard() {
                 className="w-full rounded-lg bg-background pl-10"
               />
             </div>
-            {isLoadingProducts || isPending ? (
+            {isLoadingProducts ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="flex flex-col space-y-3">
@@ -313,14 +327,24 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onAlertClick={() => setSelectedProductForAlert(product)}
-                    onDeleteClick={() => setSelectedProductForDelete(product)}
-                  />
-                ))}
+                {filteredProducts.map((product) => {
+                    const alert = productAlerts[product.id];
+                    const productWithStatus: ProductWithStatus = {
+                        ...product,
+                        zone: alert?.zone ?? 'yellow',
+                        restockRecommendation: alert?.restockRecommendation ?? 'Carregando...',
+                        confidenceLevel: alert?.confidenceLevel ?? 'low',
+                    };
+                    return (
+                        <ProductCard
+                            key={product.id}
+                            product={productWithStatus}
+                            onAlertClick={() => setSelectedProductForAlert(productWithStatus)}
+                            onDeleteClick={() => setSelectedProductForDelete(productWithStatus)}
+                            isAlertLoading={!alert}
+                        />
+                    );
+                })}
               </div>
             )}
           </TabsContent>

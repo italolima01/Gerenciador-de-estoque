@@ -2,12 +2,12 @@
 'use server';
 
 import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
-import { generateMultipleRestockAlerts } from '@/ai/flows/generate-multiple-restock-alerts';
-import type { Product, ProductWithStatus, Order } from '@/lib/types';
+import { generateRestockAlert } from '@/ai/flows/generate-restock-alert';
+import type { Product, ProductWithStatus, Order, GenerateRestockAlertOutput } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, get, set, push, remove, update } from 'firebase/database';
 
-export async function getProducts(): Promise<ProductWithStatus[]> {
+export async function getProducts(): Promise<Product[]> {
   const productsRef = ref(db, 'products');
   const snapshot = await get(productsRef);
   if (!snapshot.exists()) {
@@ -19,41 +19,27 @@ export async function getProducts(): Promise<ProductWithStatus[]> {
     ...productsObject[key]
   }));
 
-  try {
-    const productsForAlert = products.map(p => ({
-      id: p.id,
-      productName: p.name,
-      currentStock: p.quantity,
-      expirationDate: p.expirationDate,
-    }));
-    
-    const alerts = await generateMultipleRestockAlerts({ products: productsForAlert });
-    
-    const productsWithStatus = products.map(product => {
-      const alert = alerts.find(a => a.id === product.id);
-      if (alert) {
-        return { ...product, ...alert };
-      }
-      return {
-        ...product,
-        zone: 'yellow',
-        restockRecommendation: 'Status could not be determined.',
-        confidenceLevel: 'low',
-      };
-    }).sort((a, b) => a.name.localeCompare(b.name));
-
-    return productsWithStatus;
-
-  } catch (error) {
-    console.error(`Failed to get batch status for products`, error);
-    return products.map(product => ({
-      ...product,
-      zone: 'red',
-      restockRecommendation: 'Error fetching recommendation.',
-      confidenceLevel: 'low',
-    })).sort((a, b) => a.name.localeCompare(b.name));
-  }
+  return products.sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export async function getRestockAlert(product: Product): Promise<GenerateRestockAlertOutput> {
+    try {
+        const alert = await generateRestockAlert({
+            productName: product.name,
+            currentStock: product.quantity,
+            expirationDate: product.expirationDate,
+        });
+        return alert;
+    } catch (error) {
+        console.error(`Failed to get restock alert for ${product.name}`, error);
+        return {
+            zone: 'red',
+            restockRecommendation: 'Erro ao obter recomendação.',
+            confidenceLevel: 'low',
+        };
+    }
+}
+
 
 export async function getOrders(): Promise<Order[]> {
     const ordersRef = ref(db, 'orders');

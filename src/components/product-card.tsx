@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreVertical, Trash2, Loader2 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 import type { ProductWithStatus } from '@/lib/types';
@@ -22,11 +22,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Skeleton } from './ui/skeleton';
 
 interface ProductCardProps {
   product: ProductWithStatus;
   onAlertClick: () => void;
   onDeleteClick: () => void;
+  isAlertLoading: boolean;
 }
 
 const zoneTextMap: { [key: string]: string } = {
@@ -67,10 +69,15 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
 }
 
 
-export function ProductCard({ product, onAlertClick, onDeleteClick }: ProductCardProps) {
+export function ProductCard({ product, onAlertClick, onDeleteClick, isAlertLoading }: ProductCardProps) {
   const expirationDateColor = getExpirationDateColor(product.expirationDate);
   const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-  const { zone, variant } = getZoneForQuantity(product.quantity);
+  
+  // Use AI-driven zone if available, otherwise fallback to quantity-based zone
+  const quantityZone = getZoneForQuantity(product.quantity);
+  const displayZone = isAlertLoading ? quantityZone.zone : product.zone;
+  const displayVariant = isAlertLoading ? quantityZone.variant : zoneTextMap[product.zone] === 'Crítico' ? 'destructive' : zoneTextMap[product.zone] === 'Atenção' ? 'secondary' : 'success';
+
 
   return (
     <Card 
@@ -80,9 +87,13 @@ export function ProductCard({ product, onAlertClick, onDeleteClick }: ProductCar
         <div className="flex-grow">
             <div className="flex items-start justify-between">
             <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
-                <Badge variant={variant} className="capitalize shrink-0">
-                    {zoneTextMap[zone]}
+              {isAlertLoading ? (
+                 <Skeleton className="h-6 w-20 rounded-full" />
+              ) : (
+                <Badge variant={displayVariant} className="capitalize shrink-0">
+                    {zoneTextMap[displayZone]}
                 </Badge>
+              )}
             </div>
             <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
         </div>

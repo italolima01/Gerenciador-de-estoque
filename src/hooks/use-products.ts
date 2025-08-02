@@ -2,18 +2,18 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import type { ProductWithStatus } from '@/lib/types';
+import type { Product } from '@/lib/types';
 import { getProducts } from '@/app/actions';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 
 export function useProducts() {
-  const [products, setProducts] = useState<ProductWithStatus[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isStatusPending, startStatusTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
     const fetchProducts = () => {
-        startStatusTransition(async () => {
+        startTransition(async () => {
             setIsLoading(true);
             try {
                 const fetchedProducts = await getProducts();
@@ -41,5 +41,5 @@ export function useProducts() {
     return () => unsubscribe();
   }, []);
 
-  return { products, isLoading: isLoading || isStatusPending, refetch: fetchProducts };
+  return { products, isLoading: isLoading || isPending, refetch: fetchProducts };
 }
