@@ -34,7 +34,7 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }).optional().or(z.literal('')),
-  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }).optional().or(z.literal('')),
+  price: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -65,14 +65,24 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   }, [isOpen, form]);
 
   function onSubmit(values: FormValues) {
+    const priceAsNumber = parseFloat(values.price.replace(/\./g, '').replace(',', '.'));
     const newProduct: Omit<Product, 'id'> = {
-      ...values,
+      name: values.name,
       quantity: Number(values.quantity) || 0,
-      price: Number(values.price) || 0,
+      price: priceAsNumber,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
     };
     onProductAdd(newProduct);
   }
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (value: string) => void) => {
+    let value = e.target.value;
+    value = value.replace(/\D/g, ''); // Remove all non-digit characters
+    value = value.replace(/(\d{1,})(\d{2})$/, '$1,$2'); // Add comma for decimals
+    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); // Add dot for thousands
+    fieldChange(value);
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -124,10 +134,9 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                     <FormLabel>Preço (R$)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="12.99"
+                        placeholder="12,99"
                         {...field}
+                        onChange={(e) => handlePriceChange(e, field.onChange)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -164,7 +173,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                         toDate={addYears(new Date(), 10)}
                         selected={field.value}
                         onSelect={(date) => {
-                          field.onChange(date);
+                          if(date) field.onChange(date);
                           setCalendarOpen(false);
                         }}
                         disabled={(date) => date < new Date()}
