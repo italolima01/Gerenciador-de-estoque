@@ -1,27 +1,34 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { products as initialProducts } from '@/lib/data';
 
 export async function GET() {
   try {
     const productsCollectionRef = collection(db, 'products');
+    const ordersCollectionRef = collection(db, 'orders');
+
+    // Check if products already exist to avoid duplication
+    const productsSnapshot = await getDocs(productsCollectionRef);
+    if (!productsSnapshot.empty) {
+        return NextResponse.json({ success: true, message: 'Firestore database already contains data. Population skipped.' });
+    }
 
     // Create a batch to perform multiple writes at once.
     const batch = writeBatch(db);
 
     for (const product of initialProducts) {
-      // Use the predefined ID as the document ID in Firestore
-      const productRef = doc(productsCollectionRef, product.id);
+      // Create a new document reference with an auto-generated ID
+      const productRef = doc(productsCollectionRef);
+      // The product data (including its own `id` field) is set on this new document.
       batch.set(productRef, product);
     }
 
     // Commit the batch.
     await batch.commit();
-    
-    // Initialize orders collection only if it doesn't exist
-    const ordersCollectionRef = collection(db, 'orders');
+
+    // Check if orders collection is empty, just for info.
     const ordersSnapshot = await getDocs(ordersCollectionRef);
     if (ordersSnapshot.empty) {
         // No need to add a document, the collection is created on first add.
