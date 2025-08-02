@@ -3,24 +3,10 @@
 
 import { findRelevantProducts } from '@/ai/flows/find-relevant-products';
 import { generateRestockAlert } from '@/ai/flows/generate-restock-alert';
-import type { Product, ProductWithStatus, Order, GenerateRestockAlertOutput } from '@/lib/types';
+import type { Product, Order, GenerateRestockAlertOutput } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { ref, get, set, push, remove, update } from 'firebase/database';
+import { ref, set, push, remove, update } from 'firebase/database';
 
-export async function getProducts(): Promise<Product[]> {
-  const productsRef = ref(db, 'products');
-  const snapshot = await get(productsRef);
-  if (!snapshot.exists()) {
-    return [];
-  }
-  
-  const productsObject = snapshot.val();
-  const products: Product[] = Object.keys(productsObject).map(key => ({
-    ...productsObject[key]
-  }));
-
-  return products.sort((a, b) => a.name.localeCompare(b.name));
-}
 
 export async function getRestockAlert(product: Product): Promise<GenerateRestockAlertOutput> {
     try {
@@ -40,24 +26,6 @@ export async function getRestockAlert(product: Product): Promise<GenerateRestock
     }
 }
 
-
-export async function getOrders(): Promise<Order[]> {
-    const ordersRef = ref(db, 'orders');
-    const snapshot = await get(ordersRef);
-    if (!snapshot.exists()) {
-        return [];
-    }
-    const ordersObject = snapshot.val();
-    if (!ordersObject) {
-        return [];
-    }
-    const orders: Order[] = Object.keys(ordersObject).map(key => ({
-        ...ordersObject[key]
-    }));
-    return orders.reverse();
-}
-
-
 export async function searchProducts(query: string, allProductNames: string[]): Promise<string[]> {
   if (!query) {
     return allProductNames;
@@ -67,7 +35,6 @@ export async function searchProducts(query: string, allProductNames: string[]): 
 }
 
 export async function addProduct(productData: Omit<Product, 'id'>): Promise<string> {
-  // Create a new product ID that is unique and consistent with the existing format.
   const newProductId = `prod_${new Date().getTime()}`;
   const newProduct: Product = { ...productData, id: newProductId };
   await set(ref(db, `products/${newProduct.id}`), newProduct);

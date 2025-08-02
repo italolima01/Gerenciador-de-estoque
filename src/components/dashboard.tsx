@@ -43,8 +43,8 @@ function removeAccents(str: string) {
 
 
 export function Dashboard() {
-  const { products, isLoading: isLoadingProducts, refetch: fetchProducts } = useProducts();
-  const { orders, isLoading: isLoadingOrders, refetch: fetchOrders } = useOrders();
+  const { products, isLoading: isLoadingProducts } = useProducts();
+  const { orders, isLoading: isLoadingOrders } = useOrders();
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
