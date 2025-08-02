@@ -3,19 +3,11 @@
 
 import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
-import { 
-  addProduct, 
-  deleteProduct,
-  registerOrder, 
-  updateOrder,
-  cancelOrder,
-  completeOrder,
-  getRestockAlert
-} from '@/app/actions';
-import { useProducts } from '@/hooks/use-products';
-import { useOrders } from '@/hooks/use-orders';
+import { products as initialProducts, orders as initialOrders } from '@/lib/data';
+import { getRestockAlert, searchProducts } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -43,8 +35,10 @@ function removeAccents(str: string) {
 
 
 export function Dashboard() {
-  const { products, isLoading: isLoadingProducts } = useProducts();
-  const { orders, isLoading: isLoadingOrders } = useOrders();
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
@@ -61,6 +55,14 @@ export function Dashboard() {
   const [productAlerts, setProductAlerts] = useState<Record<string, GenerateRestockAlertOutput>>({});
   const { toast } = useToast();
   
+  // Simulate initial data loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const fetchProductAlert = useCallback(async (product: Product) => {
     if (!productAlerts[product.id]) { // Fetch only if not already fetched
       const alert = await getRestockAlert(product);
@@ -74,47 +76,60 @@ export function Dashboard() {
 
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
-    startTransition(async () => {
-      try {
-        await addProduct(newProductData);
-        setAddDialogOpen(false);
-        toast({
-            title: "Produto Adicionado!",
-            description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
-        });
-      } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Erro ao Adicionar Produto",
-            description: "Não foi possível salvar o novo produto. Tente novamente.",
-        });
-      }
+    startTransition(() => {
+      const newProduct = { ...newProductData, id: uuidv4() };
+      setProducts(prev => [newProduct, ...prev]);
+      setAddDialogOpen(false);
+      toast({
+          title: "Produto Adicionado!",
+          description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
+      });
     });
   };
 
   const handleDeleteProduct = (productId: string) => {
-    startTransition(async () => {
-      try {
-        await deleteProduct(productId);
-        setSelectedProductForDelete(null);
-        toast({
-            title: "Produto Excluído",
-            description: "O produto foi removido do seu inventário.",
-        });
-      } catch(e) {
-         toast({
-            variant: "destructive",
-            title: "Erro ao Excluir",
-            description: "Não foi possível excluir o produto.",
-        });
-      }
+    startTransition(() => {
+      setProducts(prev => prev.filter(p => p.id !== productId));
+      setSelectedProductForDelete(null);
+      toast({
+          title: "Produto Excluído",
+          description: "O produto foi removido do seu inventário.",
+      });
     });
   };
   
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await registerOrder(newOrderData);
+        // 1. Check stock
+        for (const item of newOrderData.items) {
+          const product = products.find(p => p.id === item.productId);
+          if (!product || product.quantity < item.quantity) {
+             throw new Error(`Estoque insuficiente para ${item.productName}.`);
+          }
+        }
+        
+        // 2. Update stock
+        setProducts(prevProducts => {
+          const updatedProducts = [...prevProducts];
+          for (const item of newOrderData.items) {
+             const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+             if (productIndex !== -1) {
+                updatedProducts[productIndex].quantity -= item.quantity;
+             }
+          }
+          return updatedProducts;
+        });
+
+        // 3. Create order
+        const newOrder = { 
+          ...newOrderData, 
+          id: uuidv4(), 
+          createdAt: new Date().toISOString(),
+          status: 'Pendente' as const
+        };
+        setOrders(prev => [newOrder, ...prev]);
+
         setRegisterOrderSheetOpen(false);
         toast({
           title: "Pedido Registrado!",
@@ -134,25 +149,54 @@ export function Dashboard() {
 
 
   const handleOrderUpdate = (updatedOrderData: Order) => {
-    startTransition(async () => {
+    startTransition(() => {
       const originalOrder = orders.find(o => o.id === updatedOrderData.id);
       if (!originalOrder) {
-        toast({
-            variant: "destructive",
-            title: "Erro ao Atualizar",
-            description: "Pedido original não encontrado.",
-        });
+        toast({ variant: "destructive", title: "Erro", description: "Pedido original não encontrado." });
         return;
-      };
+      }
+      
+       try {
+         // Calculate stock changes
+        const stockChanges: Record<string, number> = {};
+        originalOrder.items.forEach(item => {
+            stockChanges[item.productId] = (stockChanges[item.productId] || 0) + item.quantity;
+        });
+        updatedOrderData.items.forEach(item => {
+            stockChanges[item.productId] = (stockChanges[item.productId] || 0) - item.quantity;
+        });
 
-      try {
-        await updateOrder(updatedOrderData, originalOrder);
+        // Check if there is enough stock
+        for(const productId in stockChanges) {
+            if(stockChanges[productId] < 0) { // needs more stock
+                const product = products.find(p => p.id === productId);
+                if(!product || product.quantity < Math.abs(stockChanges[productId])) {
+                    throw new Error(`Estoque insuficiente para ${product?.name || 'produto'}.`);
+                }
+            }
+        }
+
+        // Update products stock
+        setProducts(prevProducts => {
+            const newProducts = [...prevProducts];
+            for(const productId in stockChanges) {
+                const productIndex = newProducts.findIndex(p => p.id === productId);
+                if(productIndex !== -1) {
+                    newProducts[productIndex].quantity += stockChanges[productId];
+                }
+            }
+            return newProducts;
+        });
+
+        // Update the order
+        setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
+        
         setSelectedOrderForEdit(null);
          toast({
           title: "Pedido Atualizado!",
           description: "As alterações no pedido foram salvas com sucesso.",
         });
-      } catch (error) {
+       } catch (error) {
          console.error("Failed to update order:", error);
          const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
          toast({
@@ -170,30 +214,41 @@ export function Dashboard() {
   }
 
   const handleCancelOrder = (orderToCancel: Order) => {
-     startTransition(async () => {
-      try {
-        await cancelOrder(orderToCancel);
+     startTransition(() => {
+        // Restore stock
+        setProducts(prevProducts => {
+            const newProducts = [...prevProducts];
+            for(const item of orderToCancel.items) {
+                const productIndex = newProducts.findIndex(p => p.id === item.productId);
+                if(productIndex !== -1) {
+                    newProducts[productIndex].quantity += item.quantity;
+                }
+            }
+            return newProducts;
+        });
+
+        // Update order status
+        setOrders(prevOrders => prevOrders.map(o => o.id === orderToCancel.id ? {...o, status: 'Cancelado'} : o));
+       
         setSelectedOrderForCancel(null);
 
         toast({
             title: "Pedido Cancelado",
             description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
         });
-      } catch (error) {
-         console.error("Failed to cancel order:", error);
-         const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
-         toast({
-            variant: "destructive",
-            title: "Erro ao Cancelar Pedido",
-            description: errorMessage,
-        });
-      }
+      
     });
   }
 
   const handleCompleteOrder = (orderId: string, note?: string) => {
-      startTransition(async () => {
-        await completeOrder(orderId, note);
+      startTransition(() => {
+        setOrders(prev => prev.map(o => {
+          if (o.id === orderId) {
+            const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
+            return { ...o, status: 'Concluído', notes: note ? newNotes : o.notes };
+          }
+          return o;
+        }));
         
         setOrderToComplete(null);
         setConfirmCompleteOpen(false);
@@ -220,7 +275,7 @@ export function Dashboard() {
   const headerButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)}>
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Registrar Pedido
             </Button>
@@ -228,19 +283,19 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)}>
+            <Button onClick={() => setAddDialogOpen(true)} disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab]);
+  }, [activeTab, isPending]);
   
   const mobileHeaderButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm" disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Pedido
             </Button>
@@ -248,16 +303,15 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)} size="sm">
+            <Button onClick={() => setAddDialogOpen(true)} size="sm" disabled={isPending}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab]);
+  }, [activeTab, isPending]);
 
-  const isLoading = isLoadingProducts || isLoadingOrders || isPending;
 
   return (
     <>
@@ -287,7 +341,7 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Visão Geral de Vendas</h2>
                 <p className="text-muted-foreground">Acompanhe o desempenho de suas vendas semanais e mensais.</p>
             </div>
-            <SalesDashboard orders={orders} products={products} isLoading={isLoadingOrders || isLoadingProducts} />
+            <SalesDashboard orders={orders} products={products} isLoading={isLoading} />
           </TabsContent>
           <TabsContent value="inventory">
             <div className="mb-6">
@@ -304,7 +358,7 @@ export function Dashboard() {
                 className="w-full rounded-lg bg-background pl-10"
               />
             </div>
-            {isLoadingProducts ? (
+            {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="flex flex-col space-y-3">
@@ -347,8 +401,8 @@ export function Dashboard() {
             <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <RegisteredOrdersList 
-                    orders={orders}
-                    isLoading={isLoadingOrders}
+                    orders={orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                    isLoading={isLoading}
                     onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                     onOrderEdit={setSelectedOrderForEdit}
                     onOrderCancel={setSelectedOrderForCancel}
