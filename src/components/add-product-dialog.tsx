@@ -55,8 +55,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      quantity: 0,
       price: '',
+      quantity: undefined,
     },
   });
   
@@ -64,8 +64,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     if (!isOpen) {
       form.reset({
         name: '',
-        quantity: 0,
         price: '',
+        quantity: undefined,
         expirationDate: undefined
       });
     }
@@ -116,7 +116,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" placeholder="Ex: 50" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
