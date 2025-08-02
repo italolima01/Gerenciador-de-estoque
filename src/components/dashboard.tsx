@@ -102,8 +102,15 @@ export function Dashboard() {
       const productUpdates: { [productId: string]: number } = {};
       for (const item of newOrderData.items) {
           const product = products.find(p => p.id === item.productId);
-          if(product) {
+          if(product && product.quantity >= item.quantity) {
             productUpdates[item.productId] = product.quantity - item.quantity;
+          } else {
+             toast({
+                variant: "destructive",
+                title: "Erro de Estoque",
+                description: `O produto "${item.productName}" não tem estoque suficiente.`,
+            });
+            return;
           }
       }
 
