@@ -27,6 +27,7 @@ import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
 import { SalesDashboard } from './sales-dashboard';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 
 function removeAccents(str: string) {
@@ -35,8 +36,8 @@ function removeAccents(str: string) {
 
 
 export function Dashboard() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [products, setProducts] = useLocalStorage<Product[]>('products', initialProducts);
+  const [orders, setOrders] = useLocalStorage<Order[]>('orders', initialOrders);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
