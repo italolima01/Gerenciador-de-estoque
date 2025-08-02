@@ -248,9 +248,9 @@ export function Dashboard() {
         <Tabs defaultValue="dashboard" onValueChange={setActiveTab}>
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             </TabsList>
              <div className='sm:hidden flex items-center gap-2'>
                  {mobileHeaderButton}
