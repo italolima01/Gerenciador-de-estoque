@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
 
 import type { Order, Product, ProductWithStatus } from '@/lib/types';
@@ -11,7 +11,9 @@ import {
   registerOrder, 
   updateOrder,
   cancelOrder,
-  completeOrder
+  completeOrder,
+  getProducts,
+  getOrders
 } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,9 +33,8 @@ import { CancelOrderDialog } from './cancel-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
-import { useProducts } from '@/hooks/use-products';
-import { useOrders } from '@/hooks/use-orders';
 import { SalesDashboard } from './sales-dashboard';
+
 
 function removeAccents(str: string) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -41,8 +42,10 @@ function removeAccents(str: string) {
 
 
 export function Dashboard() {
-  const { products, isLoading: isLoadingProducts, isStatusPending } = useProducts();
-  const { orders, isLoading: isLoadingOrders } = useOrders();
+  const [products, setProducts] = useState<ProductWithStatus[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingProducts, setLoadingProducts] = useState(true);
+  const [isLoadingOrders, setLoadingOrders] = useState(true);
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
@@ -55,14 +58,38 @@ export function Dashboard() {
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('inventory');
   const { toast } = useToast();
+
+  const fetchProducts = () => {
+    startTransition(async () => {
+        setLoadingProducts(true);
+        const fetchedProducts = await getProducts();
+        setProducts(fetchedProducts);
+        setLoadingProducts(false);
+    });
+  };
+
+  const fetchOrders = () => {
+     startTransition(async () => {
+        setLoadingOrders(true);
+        const fetchedOrders = await getOrders();
+        setOrders(fetchedOrders);
+        setLoadingOrders(false);
+     });
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchOrders();
+  }, []);
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(async () => {
       try {
         await addProduct(newProductData);
         setAddDialogOpen(false);
+        fetchProducts();
         toast({
             title: "Produto Adicionado!",
             description: `"${newProductData.name}" foi adicionado ao seu inventário.`,
@@ -82,6 +109,7 @@ export function Dashboard() {
       try {
         await deleteProduct(productId);
         setSelectedProductForDelete(null);
+        fetchProducts();
         toast({
             title: "Produto Excluído",
             description: "O produto foi removido do seu inventário.",
@@ -108,6 +136,8 @@ export function Dashboard() {
 
       await registerOrder(newOrderData, productUpdates);
       setRegisterOrderSheetOpen(false);
+      fetchOrders();
+      fetchProducts();
     });
   };
 
@@ -136,6 +166,8 @@ export function Dashboard() {
 
       await updateOrder(updatedOrderData, productUpdates);
       setSelectedOrderForEdit(null);
+      fetchOrders();
+      fetchProducts();
     });
   }
   
@@ -156,6 +188,8 @@ export function Dashboard() {
 
       await cancelOrder(orderToCancel, productUpdates);
       setSelectedOrderForCancel(null);
+      fetchOrders();
+      fetchProducts();
 
       toast({
           title: "Pedido Cancelado",
@@ -172,6 +206,7 @@ export function Dashboard() {
         setOrderToComplete(null);
         setConfirmCompleteOpen(false);
         setAddNoteDialogOpen(false);
+        fetchOrders();
         
          toast({
             title: "Pedido Concluído!",
@@ -231,7 +266,7 @@ export function Dashboard() {
     return null;
   }, [activeTab]);
 
-  const isLoading = isLoadingProducts || isLoadingOrders || isStatusPending || isPending;
+  const isLoading = isLoadingProducts || isLoadingOrders || isPending;
 
   return (
     <>
@@ -245,7 +280,7 @@ export function Dashboard() {
       </header>
         
       <main className="container mx-auto p-4 md:p-6">
-        <Tabs defaultValue="dashboard" onValueChange={setActiveTab}>
+        <Tabs defaultValue="inventory" onValueChange={setActiveTab}>
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
@@ -278,7 +313,7 @@ export function Dashboard() {
                 className="w-full rounded-lg bg-background pl-10"
               />
             </div>
-            {isLoadingProducts || isStatusPending ? (
+            {isLoadingProducts || isPending ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="flex flex-col space-y-3">
@@ -381,7 +416,7 @@ export function Dashboard() {
         <CancelOrderDialog
           order={selectedOrderForCancel}
           isOpen={!!selectedOrderForCancel}
-          onOpenChange={() => handleCancelOrder(selectedOrderForCancel)}
+          onOpenChange={() => setSelectedOrderForCancel(null)}
           onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
           isPending={isPending}
         />

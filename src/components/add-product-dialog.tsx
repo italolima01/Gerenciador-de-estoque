@@ -34,10 +34,7 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.string()
-    .refine(value => /^\d{1,3}(\.\d{3})*,\d{2}$/.test(value), { message: "Preço inválido. Use o formato 1.234,56" })
-    .transform(value => parseFloat(value.replace(/\./g, '').replace(',', '.')))
-    .refine(value => value >= 0, { message: 'O preço não pode ser negativo.' }),
+  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -56,8 +53,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      price: undefined,
-      quantity: undefined,
+      quantity: 0,
+      price: 0,
     },
   });
   
@@ -66,22 +63,6 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       form.reset();
     }
   }, [isOpen, form]);
-
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    value = value.replace(/\D/g, "");
-    value = value.replace(/^0+/, "");
-    
-    if(value.length < 3) {
-      value = '0'.repeat(3 - value.length) + value;
-    }
-
-    value = value.replace(/(\d)(\d{2})$/, '$1,$2');
-    value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
-    
-    form.setValue('price', value, { shouldValidate: true });
-  };
-
 
   function onSubmit(values: FormValues) {
     const newProduct: Omit<Product, 'id'> = {
@@ -123,7 +104,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || undefined)} />
+                      <Input type="number" placeholder="50" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,10 +118,10 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                     <FormLabel>Preço (R$)</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="12,99"
+                        type="number"
+                        placeholder="12.99"
+                        step="0.01"
                         {...field}
-                        onChange={handlePriceChange}
-                        value={field.value || ''}
                       />
                     </FormControl>
                     <FormMessage />
