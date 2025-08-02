@@ -1,3 +1,4 @@
+
 export type Product = {
   id: string;
   name: string;
@@ -6,8 +7,6 @@ export type Product = {
   expirationDate: string; // YYYY-MM-DD
   averageDailySales: number;
   daysToRestock: number;
-  imageUrl: string;
-  imageHint: string;
 };
 
 export type ProductWithStatus = Product & {

@@ -71,6 +71,14 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     }
   }, [isOpen, form]);
 
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: any) => {
+    let value = e.target.value;
+    value = value.replace(/\D/g, ""); // Remove tudo que não for dígito
+    value = value.replace(/(\d)(\d{2})$/, '$1,$2'); // Coloca a vírgula antes dos últimos 2 dígitos
+    value = value.replace(/(?=(\d{3})+(\D))\B/g, "."); // Adiciona ponto como separador de milhar
+    field.onChange(value);
+  };
+
   function onSubmit(values: FormValues) {
     const newProduct: Product = {
       ...values,
@@ -78,8 +86,6 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
       averageDailySales: 0, // Default value
       daysToRestock: 0, // Default value
-      imageUrl: 'https://placehold.co/400x400',
-      imageHint: 'bottle drink',
     };
     onProductAdd(newProduct);
   }
@@ -132,14 +138,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       <Input
                         placeholder="12,99"
                         {...field}
-                        value={field.value || ''}
-                        onChange={(e) => {
-                          let value = e.target.value;
-                          value = value.replace(/\D/g, "");
-                          value = value.replace(/(\d)(\d{2})$/, '$1,$2');
-                          value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
-                          field.onChange(value);
-                        }}
+                        onChange={(e) => handlePriceChange(e, field)}
                       />
                     </FormControl>
                     <FormMessage />

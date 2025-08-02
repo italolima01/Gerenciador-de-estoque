@@ -1,3 +1,4 @@
+
 import type { Product } from './types';
 
 export const products: Product[] = [
@@ -9,8 +10,6 @@ export const products: Product[] = [
     expirationDate: '2025-12-20',
     averageDailySales: 2,
     daysToRestock: 10,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'wine bottle',
   },
   {
     id: 'prod_002',
@@ -20,8 +19,6 @@ export const products: Product[] = [
     expirationDate: '2024-11-15',
     averageDailySales: 20,
     daysToRestock: 5,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'beer bottle',
   },
   {
     id: 'prod_003',
@@ -31,8 +28,6 @@ export const products: Product[] = [
     expirationDate: '2030-01-01',
     averageDailySales: 1,
     daysToRestock: 14,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'whisky bottle',
   },
   {
     id: 'prod_004',
@@ -42,8 +37,6 @@ export const products: Product[] = [
     expirationDate: '2024-10-30',
     averageDailySales: 8,
     daysToRestock: 3,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'soda can',
   },
   {
     id: 'prod_005',
@@ -53,8 +46,6 @@ export const products: Product[] = [
     expirationDate: '2025-08-01',
     averageDailySales: 30,
     daysToRestock: 2,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'water bottle',
   },
   {
     id: 'prod_006',
@@ -64,8 +55,6 @@ export const products: Product[] = [
     expirationDate: '2024-09-10',
     averageDailySales: 5,
     daysToRestock: 4,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'juice carton',
   },
     {
     id: 'prod_007',
@@ -75,8 +64,6 @@ export const products: Product[] = [
     expirationDate: '2028-06-01',
     averageDailySales: 3,
     daysToRestock: 7,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'vodka bottle',
   },
   {
     id: 'prod_008',
@@ -86,7 +73,5 @@ export const products: Product[] = [
     expirationDate: '2026-05-20',
     averageDailySales: 0.5,
     daysToRestock: 20,
-    imageUrl: 'https://placehold.co/400x400',
-    imageHint: 'champagne bottle',
   },
 ];

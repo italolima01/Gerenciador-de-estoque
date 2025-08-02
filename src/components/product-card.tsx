@@ -1,7 +1,6 @@
 
 'use client';
 
-import Image from 'next/image';
 import { MoreVertical, Bell, ShoppingCart, Trash2 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
@@ -80,29 +79,22 @@ export function ProductCard({ product, onSellClick, onAlertClick, onDeleteClick 
         className="flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer"
         onClick={onAlertClick}
     >
-      <CardHeader className="p-0">
-        <div className="relative aspect-square w-full">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            data-ai-hint={product.imageHint}
-          />
+      <CardHeader className="flex flex-row items-start p-4">
+        <div className="flex-grow">
+            <div className="flex items-start justify-between">
+            <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
+                <Badge variant={variant} className="capitalize shrink-0">
+                    {zoneTextMap[zone]}
+                </Badge>
+            </div>
+            <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
+            <CardDescription className={cn("mt-1 font-medium", expirationDateColor)}>
+                Vencimento: {formattedExpirationDate}
+            </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow p-4">
-        <div className="flex items-start justify-between">
-           <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
-            <Badge variant={variant} className="capitalize shrink-0">
-                {zoneTextMap[zone]}
-            </Badge>
-        </div>
-        <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
-        <CardDescription className={cn("mt-1 font-medium", expirationDateColor)}>
-            Vencimento: {formattedExpirationDate}
-        </CardDescription>
+      <CardContent className="flex-grow p-4 pt-0">
+        
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>
