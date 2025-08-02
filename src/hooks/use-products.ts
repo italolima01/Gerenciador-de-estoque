@@ -4,31 +4,26 @@
 import { useState, useEffect } from 'react';
 import type { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const productsRef = ref(db, 'products');
+    const productsQuery = query(collection(db, 'products'), orderBy('name', 'asc'));
 
-    const unsubscribe = onValue(productsRef, (snapshot) => {
-      setIsLoading(true);
-      if (snapshot.exists()) {
-        const productsObject = snapshot.val();
-        const fetchedProducts: Product[] = Object.keys(productsObject).map(key => ({
-          ...productsObject[key]
-        }));
-        setProducts(fetchedProducts.sort((a, b) => a.name.localeCompare(b.name)));
-      } else {
-        setProducts([]);
-      }
+    const unsubscribe = onSnapshot(productsQuery, (snapshot) => {
+      const fetchedProducts: Product[] = [];
+      snapshot.forEach((doc) => {
+        fetchedProducts.push({ ...doc.data() as Product });
+      });
+      setProducts(fetchedProducts);
       setIsLoading(false);
     }, (error) => {
-        console.error("Firebase read failed: " + error.message);
-        setIsLoading(false);
-        setProducts([]);
+      console.error("Firestore read failed: " + error.message);
+      setIsLoading(false);
+      setProducts([]);
     });
 
     return () => unsubscribe();

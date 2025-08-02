@@ -4,32 +4,26 @@
 import { useState, useEffect } from 'react';
 import type { Order } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
-
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const ordersRef = ref(db, 'orders');
+    const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onValue(ordersRef, (snapshot) => {
-        setIsLoading(true);
-        if (snapshot.exists()) {
-            const ordersObject = snapshot.val();
-            const fetchedOrders: Order[] = Object.keys(ordersObject).map(key => ({
-                ...ordersObject[key]
-            }));
-            setOrders(fetchedOrders.reverse());
-        } else {
-            setOrders([]);
-        }
-        setIsLoading(false);
+    const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+      const fetchedOrders: Order[] = [];
+      snapshot.forEach((doc) => {
+        fetchedOrders.push({ ...doc.data() as Order });
+      });
+      setOrders(fetchedOrders);
+      setIsLoading(false);
     }, (error) => {
-        console.error("Firebase read failed: " + error.message);
-        setIsLoading(false);
-        setOrders([]);
+      console.error("Firebase read failed: " + error.message);
+      setIsLoading(false);
+      setOrders([]);
     });
 
     return () => unsubscribe();
