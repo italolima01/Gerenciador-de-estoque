@@ -34,8 +34,8 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.string().refine(value => !isNaN(parseFloat(value.replace(',', '.'))), { message: "Preço inválido." })
-    .transform(value => parseFloat(value.replace(',', '.')))
+  price: z.string().refine(value => !isNaN(parseFloat(value.replace(/\./g, '').replace(',', '.'))), { message: "Preço inválido." })
+    .transform(value => parseFloat(value.replace(/\./g, '').replace(',', '.')))
     .refine(value => value >= 0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
@@ -56,7 +56,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     defaultValues: {
       name: '',
       quantity: 0,
-      price: "0,00",
+      price: '',
     },
   });
   
@@ -65,7 +65,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       form.reset({
         name: '',
         quantity: 0,
-        price: '0,00',
+        price: '',
         expirationDate: undefined
       });
     }
@@ -87,10 +87,9 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
     value = value.replace(/\D/g, ""); // Remove tudo que não for dígito
-    value = value.replace(/(\d{1,})(\d{2})$/, "$1,$2"); // Coloca a vírgula antes dos últimos 2 dígitos
-    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."); // Adiciona ponto como separador de milhar
-    e.target.value = value;
-    return e;
+    value = value.replace(/(\d)(\d{2})$/, '$1,$2'); // Coloca a vírgula antes dos últimos 2 dígitos
+    value = value.replace(/(?=(\d{3})+(\D))\B/g, "."); // Adiciona ponto como separador de milhar
+    field.onChange(value);
   };
 
 
@@ -142,7 +141,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       <Input 
                         placeholder="12,99"
                         {...field}
-                        onChange={(e) => field.onChange(handlePriceChange(e))}
+                        onChange={handlePriceChange}
                       />
                     </FormControl>
                     <FormMessage />
