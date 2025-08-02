@@ -35,16 +35,18 @@ interface SelectQuantityDialogProps {
   isPending: boolean;
 }
 
-export function SelectQuantityDialog({ product, isOpen, onOpenChange, onConfirm, isPending }: SelectQuantityDialogProps) {
-    
-  const formSchema = z.object({
+const getFormSchema = (maxQuantity: number) => z.object({
     quantity: z.coerce
       .number()
       .int()
       .positive('A quantidade deve ser positiva.')
-      .max(product?.quantity ?? 0, `Máximo de ${product?.quantity} em estoque.`),
-  });
+      .max(maxQuantity, `Máximo de ${maxQuantity} em estoque.`),
+});
 
+
+export function SelectQuantityDialog({ product, isOpen, onOpenChange, onConfirm, isPending }: SelectQuantityDialogProps) {
+    
+  const formSchema = getFormSchema(product?.quantity ?? 0);
   type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
@@ -55,17 +57,17 @@ export function SelectQuantityDialog({ product, isOpen, onOpenChange, onConfirm,
   });
   
   React.useEffect(() => {
-    if (product) {
+    if (isOpen && product) {
        form.reset({ quantity: 1 });
+       // Re-initialize resolver if product changes while dialog is open (edge case)
+       form.trigger();
     }
-  }, [product, form, isOpen]);
+  }, [isOpen, product, form]);
 
   if (!product) return null;
 
   function onSubmit(values: FormValues) {
-    if(product) {
-      onConfirm(product.id, values.quantity);
-    }
+    onConfirm(product!.id, values.quantity);
   }
 
   return (
