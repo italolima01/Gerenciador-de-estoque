@@ -70,8 +70,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       quantity: values.quantity,
       price: values.price,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
-      averageDailySales: 0, // Default value
-      daysToRestock: 0, // Default value
+      averageDailySales: 0, 
+      daysToRestock: 0, 
       imageUrl: 'https://placehold.co/400x400',
       imageHint: 'bottle drink',
     };

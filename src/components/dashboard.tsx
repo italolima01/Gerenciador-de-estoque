@@ -75,7 +75,7 @@ export function Dashboard() {
         const newProductWithStatus: ProductWithStatus = { 
           ...newProductData, 
           id: newProductId,
-          zone: 'green', // Default status for new products
+          zone: 'green', 
           restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
           confidenceLevel: 'low'
         };
