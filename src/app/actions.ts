@@ -14,7 +14,6 @@ import {
     runTransaction,
     addDoc,
     getDoc,
-    serverTimestamp
 } from 'firebase/firestore';
 
 
@@ -45,11 +44,9 @@ export async function searchProducts(query: string, allProductNames: string[]): 
 }
 
 export async function addProduct(productData: Omit<Product, 'id'>): Promise<string> {
-  const newProductId = `prod_${new Date().getTime()}`;
-  const newProduct: Product = { ...productData, id: newProductId };
-  const productRef = doc(db, 'products', newProduct.id);
-  await setDoc(productRef, newProduct);
-  return newProduct.id;
+    const docRef = await addDoc(collection(db, 'products'), productData);
+    await updateDoc(docRef, { id: docRef.id });
+    return docRef.id;
 }
 
 
@@ -103,7 +100,7 @@ export async function cancelOrder(order: Order, productUpdates: { [productId: st
 }
 
 export async function completeOrder(orderId: string, note?: string): Promise<void> {
-    const orderRef = doc(db, `orders`, orderId);
+    const orderRef = doc(db, 'orders', orderId);
     const orderSnap = await getDoc(orderRef);
     if (orderSnap.exists()) {
         const order = orderSnap.data();

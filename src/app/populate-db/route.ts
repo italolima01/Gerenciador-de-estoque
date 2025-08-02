@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
 import { products as initialProducts } from '@/lib/data';
 
 export async function GET() {
@@ -11,10 +11,11 @@ export async function GET() {
     // Create a batch to perform multiple writes at once.
     const batch = writeBatch(db);
 
-    initialProducts.forEach((product) => {
+    for (const product of initialProducts) {
+      // Use the predefined ID as the document ID in Firestore
       const productRef = doc(productsCollectionRef, product.id);
       batch.set(productRef, product);
-    });
+    }
 
     // Commit the batch.
     await batch.commit();

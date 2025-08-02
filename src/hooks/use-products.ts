@@ -16,7 +16,7 @@ export function useProducts() {
     const unsubscribe = onSnapshot(productsQuery, (snapshot) => {
       const fetchedProducts: Product[] = [];
       snapshot.forEach((doc) => {
-        fetchedProducts.push({ ...doc.data() as Product });
+        fetchedProducts.push({ id: doc.id, ...doc.data() } as Product);
       });
       setProducts(fetchedProducts);
       setIsLoading(false);

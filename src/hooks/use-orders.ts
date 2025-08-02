@@ -16,7 +16,7 @@ export function useOrders() {
     const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
       const fetchedOrders: Order[] = [];
       snapshot.forEach((doc) => {
-        fetchedOrders.push({ ...doc.data() as Order });
+        fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
       });
       setOrders(fetchedOrders);
       setIsLoading(false);
