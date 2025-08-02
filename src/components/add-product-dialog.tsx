@@ -39,8 +39,6 @@ const formSchema = z.object({
     .transform(value => parseFloat(value.replace(/\./g, '').replace(',', '.')))
     .refine(value => value >= 0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
-  averageDailySales: z.coerce.number().int().min(0, { message: 'O valor não pode ser negativo.' }),
-  daysToRestock: z.coerce.number().int().min(0, { message: 'O valor não pode ser negativo.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -60,8 +58,6 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       name: '',
       price: undefined,
       quantity: undefined,
-      averageDailySales: 0,
-      daysToRestock: 7,
     },
   });
   
@@ -127,7 +123,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                      <Input type="number" placeholder="Ex: 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || undefined)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -146,34 +142,6 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                         onChange={handlePriceChange}
                         value={field.value || ''}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-             <div className="flex gap-4">
-               <FormField
-                control={form.control}
-                name="averageDailySales"
-                render={({ field }) => (
-                  <FormItem className="w-1/2">
-                    <FormLabel>Venda Média Diária</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Ex: 10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="daysToRestock"
-                render={({ field }) => (
-                  <FormItem className="w-1/2">
-                    <FormLabel>Dias para Reabastecer</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Ex: 7" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

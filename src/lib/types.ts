@@ -5,8 +5,6 @@ export type Product = {
   quantity: number;
   price: number;
   expirationDate: string; // YYYY-MM-DD
-  averageDailySales: number;
-  daysToRestock: number;
 };
 
 export type ProductWithStatus = Product & {

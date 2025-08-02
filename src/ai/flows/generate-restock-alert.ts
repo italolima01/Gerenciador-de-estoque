@@ -1,9 +1,9 @@
+
 'use server';
 /**
- * @fileOverview This file defines a Genkit flow for generating restock alerts based on sales data and stock levels.
+ * @fileOverview This file defines a Genkit flow for generating restock alerts based on stock levels and expiration dates.
  *
- * The flow analyzes product sales data and stock levels to predict optimal restock times, helping to minimize stockouts and waste due to expiration.
- * It uses an AI model to analyze sales data and forecast optimal times for restocking.
+ * The flow analyzes product stock levels and expiration dates to provide restock recommendations, helping to minimize stockouts and waste.
  *
  * @param {GenerateRestockAlertInput} input - The input data for generating restock alerts.
  * @returns {Promise<GenerateRestockAlertOutput>} - A promise that resolves with the generated restock alert.
@@ -13,8 +13,6 @@
  * const inputData = {
  *   productName: 'Coca-Cola',
  *   currentStock: 50,
- *   averageDailySales: 10,
- *   daysToRestock: 7,
  *   expirationDate: '2024-12-31',
  * };
  *
@@ -29,10 +27,6 @@ import {z} from 'genkit';
 const GenerateRestockAlertInputSchema = z.object({
   productName: z.string().describe('The name of the product.'),
   currentStock: z.number().describe('The current stock level of the product.'),
-  averageDailySales: z
-    .number()
-    .describe('The average daily sales of the product.'),
-  daysToRestock: z.number().describe('The number of days required to restock the product.'),
   expirationDate: z.string().describe('The expiration date of the product (YYYY-MM-DD).'),
 });
 
@@ -44,7 +38,7 @@ const GenerateRestockAlertOutputSchema = z.object({
   restockRecommendation: z
     .string()
     .describe(
-      'A recommendation on when to restock the product, considering stock levels, sales data, and expiration date.'
+      'A recommendation on when to restock the product, considering stock levels and expiration date.'
     ),
   confidenceLevel: z
     .string()
@@ -74,18 +68,21 @@ const restockAlertPrompt = ai.definePrompt({
   output: {
     schema: GenerateRestockAlertOutputSchema,
   },
-  prompt: `You are an AI assistant that analyzes sales data, stock levels, and expiration dates to provide restock recommendations for a beverage distributor.
+  prompt: `You are an AI assistant that analyzes stock levels and expiration dates to provide restock recommendations for a beverage distributor.
 
-  Based on the following information, determine the optimal time to restock the product, the confidence level of your recommendation, and the corresponding stock level zone (green, yellow, or red).
+  Based on the following information, determine the stock level zone (green, yellow, or red) and provide a recommendation.
 
   Product Name: {{{productName}}}
   Current Stock: {{{currentStock}}}
-  Average Daily Sales: {{{averageDailySales}}}
-  Days to Restock: {{{daysToRestock}}}
   Expiration Date: {{{expirationDate}}}
 
+  - Green zone (ideal stock): More than 50 units.
+  - Yellow zone (caution): Between 21 and 50 units.
+  - Red zone (critical): 20 units or less.
+
+  Also, consider the expiration date. If a product is expiring in less than 30 days, the situation is more critical.
+
   Provide a clear and concise restock recommendation, a confidence level (high, medium, low), and the stock level zone.
-  Ensure that the restock recommendation considers the remaining shelf life of the product and the time required to restock.
 `,
 });
 

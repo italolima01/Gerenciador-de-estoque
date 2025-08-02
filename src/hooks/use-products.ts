@@ -29,8 +29,6 @@ export function useProducts() {
                     id: p.id,
                     productName: p.name,
                     currentStock: p.quantity,
-                    averageDailySales: p.averageDailySales,
-                    daysToRestock: p.daysToRestock,
                     expirationDate: p.expirationDate,
                 }));
 

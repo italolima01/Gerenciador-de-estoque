@@ -10,8 +10,6 @@ const products = [
     quantity: 30,
     price: 75.50,
     expirationDate: '2025-12-20',
-    averageDailySales: 2,
-    daysToRestock: 10,
   },
   {
     id: 'prod_002',
@@ -19,8 +17,6 @@ const products = [
     quantity: 150,
     price: 12.99,
     expirationDate: '2024-11-15',
-    averageDailySales: 20,
-    daysToRestock: 5,
   },
   {
     id: 'prod_003',
@@ -28,8 +24,6 @@ const products = [
     quantity: 15,
     price: 189.90,
     expirationDate: '2030-01-01',
-    averageDailySales: 1,
-    daysToRestock: 14,
   },
   {
     id: 'prod_004',
@@ -37,8 +31,6 @@ const products = [
     quantity: 20,
     price: 5.00,
     expirationDate: '2024-10-30',
-    averageDailySales: 8,
-    daysToRestock: 3,
   },
   {
     id: 'prod_005',
@@ -46,8 +38,6 @@ const products = [
     quantity: 200,
     price: 3.50,
     expirationDate: '2025-08-01',
-    averageDailySales: 30,
-    daysToRestock: 2,
   },
   {
     id: 'prod_006',
@@ -55,8 +45,6 @@ const products = [
     quantity: 40,
     price: 8.75,
     expirationDate: '2024-09-10',
-    averageDailySales: 5,
-    daysToRestock: 4,
   },
     {
     id: 'prod_007',
@@ -64,8 +52,6 @@ const products = [
     quantity: 25,
     price: 95.00,
     expirationDate: '2028-06-01',
-    averageDailySales: 3,
-    daysToRestock: 7,
   },
   {
     id: 'prod_008',
@@ -73,8 +59,6 @@ const products = [
     quantity: 10,
     price: 250.00,
     expirationDate: '2026-05-20',
-    averageDailySales: 0.5,
-    daysToRestock: 20,
   },
 ];
 

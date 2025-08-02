@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating restock alerts for multiple products at once.
@@ -14,8 +15,6 @@ const ProductAlertInputSchema = z.object({
     id: z.string().describe('The unique identifier for the product.'),
     productName: z.string().describe('The name of the product.'),
     currentStock: z.number().describe('The current stock level of the product.'),
-    averageDailySales: z.number().describe('The average daily sales of the product.'),
-    daysToRestock: z.number().describe('The number of days required to restock the product.'),
     expirationDate: z.string().describe('The expiration date of the product (YYYY-MM-DD).'),
 });
 
@@ -57,21 +56,24 @@ const multipleRestockAlertsPrompt = ai.definePrompt({
   output: {
     schema: GenerateMultipleRestockAlertsOutputSchema,
   },
-  prompt: `You are an AI assistant that analyzes sales data, stock levels, and expiration dates to provide restock recommendations for a beverage distributor.
+  prompt: `You are an AI assistant that analyzes stock levels and expiration dates to provide restock recommendations for a beverage distributor.
 
-  For each of the following products, determine the optimal time to restock, the confidence level of your recommendation, and the corresponding stock level zone (green, yellow, or red).
+  For each of the following products, determine the corresponding stock level zone (green, yellow, or red).
+
+  - Green zone (ideal stock): More than 50 units.
+  - Yellow zone (caution): Between 21 and 50 units.
+  - Red zone (critical): 20 units or less.
+
+  Also, consider the expiration date. If a product is expiring in less than 30 days, the situation is more critical.
 
   {{#each products}}
   - Product ID: {{{id}}}
     - Product Name: {{{productName}}}
     - Current Stock: {{{currentStock}}}
-    - Average Daily Sales: {{{averageDailySales}}}
-    - Days to Restock: {{{daysToRestock}}}
     - Expiration Date: {{{expirationDate}}}
   {{/each}}
 
   Provide a clear and concise restock recommendation, a confidence level (high, medium, low), and the stock level zone for each product.
-  Ensure that the restock recommendation considers the remaining shelf life of the product and the time required to restock.
   Return the results as an array of objects, with each object containing the 'id', 'zone', 'restockRecommendation', and 'confidenceLevel'.
 `,
 });
