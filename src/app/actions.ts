@@ -67,9 +67,9 @@ export async function searchProducts(query: string, allProductNames: string[]): 
 }
 
 export async function addProduct(productData: Omit<Product, 'id'>): Promise<string> {
-  const productsRef = ref(db, 'products');
-  const newProductRef = push(productsRef);
-  const newProduct: Product = { ...productData, id: newProductRef.key! };
+  // Create a new product ID that is unique and consistent with the existing format.
+  const newProductId = `prod_${new Date().getTime()}`;
+  const newProduct: Product = { ...productData, id: newProductId };
   await set(ref(db, `products/${newProduct.id}`), newProduct);
   return newProduct.id;
 }
