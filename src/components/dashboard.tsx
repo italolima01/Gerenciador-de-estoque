@@ -33,6 +33,7 @@ import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
 import { useProducts } from '@/hooks/use-products';
 import { useOrders } from '@/hooks/use-orders';
+import { SalesDashboard } from './sales-dashboard';
 
 function removeAccents(str: string) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -54,7 +55,7 @@ export function Dashboard() {
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const { toast } = useToast();
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
@@ -244,9 +245,10 @@ export function Dashboard() {
       </header>
         
       <main className="container mx-auto p-4 md:p-6">
-        <Tabs defaultValue="orders" onValueChange={setActiveTab}>
+        <Tabs defaultValue="dashboard" onValueChange={setActiveTab}>
           <div className="mb-6 flex items-center justify-between">
             <TabsList>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
             </TabsList>
@@ -254,6 +256,13 @@ export function Dashboard() {
                  {mobileHeaderButton}
             </div>
           </div>
+           <TabsContent value="dashboard">
+            <div className="mb-6">
+                <h2 className="font-headline text-3xl font-bold tracking-tight">Visão Geral de Vendas</h2>
+                <p className="text-muted-foreground">Acompanhe o desempenho de suas vendas semanais e mensais.</p>
+            </div>
+            <SalesDashboard orders={orders} products={products} isLoading={isLoadingOrders || isLoadingProducts} />
+          </TabsContent>
           <TabsContent value="inventory">
             <div className="mb-6">
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
@@ -372,7 +381,7 @@ export function Dashboard() {
         <CancelOrderDialog
           order={selectedOrderForCancel}
           isOpen={!!selectedOrderForCancel}
-          onOpenChange={() => setSelectedOrderForCancel(null)}
+          onOpenChange={() => handleCancelOrder(selectedOrderForCancel)}
           onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
           isPending={isPending}
         />
