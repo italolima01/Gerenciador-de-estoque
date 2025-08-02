@@ -79,6 +79,7 @@ export function Dashboard() {
           restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
           confidenceLevel: 'low'
         };
+
         setProducts(prev => [newProductWithStatus, ...prev]);
         setAddDialogOpen(false);
         toast({
@@ -471,5 +472,7 @@ export function Dashboard() {
 
     
 
+
+    
 
     
