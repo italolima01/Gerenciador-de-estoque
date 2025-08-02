@@ -84,15 +84,6 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     onProductAdd(newProduct);
   }
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    value = value.replace(/\D/g, ""); // Remove tudo que não for dígito
-    value = value.replace(/(\d)(\d{2})$/, '$1,$2'); // Coloca a vírgula antes dos últimos 2 dígitos
-    value = value.replace(/(?=(\d{3})+(\D))\B/g, "."); // Adiciona ponto como separador de milhar
-    field.onChange(value);
-  };
-
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -134,19 +125,30 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
               <FormField
                 control={form.control}
                 name="price"
-                render={({ field }) => (
-                  <FormItem className="w-1/2">
-                    <FormLabel>Preço (R$)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="12,99"
-                        {...field}
-                        onChange={handlePriceChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                        let value = e.target.value;
+                        value = value.replace(/\D/g, "");
+                        value = value.replace(/(\d)(\d{2})$/, '$1,$2');
+                        value = value.replace(/(?=(\d{3})+(\D))\B/g, ".");
+                        field.onChange(value);
+                    };
+
+                    return (
+                        <FormItem className="w-1/2">
+                            <FormLabel>Preço (R$)</FormLabel>
+                            <FormControl>
+                            <Input
+                                placeholder="12,99"
+                                {...field}
+                                value={field.value || ''}
+                                onChange={handlePriceChange}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    );
+                }}
               />
             </div>
             <FormField
