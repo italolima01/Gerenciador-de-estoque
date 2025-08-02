@@ -34,7 +34,9 @@ import type { Product } from '@/lib/types';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.coerce.number().min(0, { message: 'O preço não pode ser negativo.' }),
+  price: z.string().refine(value => !isNaN(parseFloat(value.replace(',', '.'))), { message: "Preço inválido." })
+    .transform(value => parseFloat(value.replace(',', '.')))
+    .refine(value => value >= 0, { message: 'O preço não pode ser negativo.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -54,13 +56,18 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     defaultValues: {
       name: '',
       quantity: 0,
-      price: 0,
+      price: "0,00",
     },
   });
   
   React.useEffect(() => {
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        name: '',
+        quantity: 0,
+        price: '0,00',
+        expirationDate: undefined
+      });
     }
   }, [isOpen, form]);
 
@@ -76,6 +83,16 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     };
     onProductAdd(newProduct);
   }
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    value = value.replace(/\D/g, ""); // Remove tudo que não for dígito
+    value = value.replace(/(\d{1,})(\d{2})$/, "$1,$2"); // Coloca a vírgula antes dos últimos 2 dígitos
+    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."); // Adiciona ponto como separador de milhar
+    e.target.value = value;
+    return e;
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -122,7 +139,11 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                   <FormItem className="w-1/2">
                     <FormLabel>Preço (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} />
+                      <Input 
+                        placeholder="12,99"
+                        {...field}
+                        onChange={(e) => field.onChange(handlePriceChange(e))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
