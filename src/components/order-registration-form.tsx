@@ -226,6 +226,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       const maxQuantity = selectedProduct?.quantity ?? 0;
                       const price = selectedProduct?.price ?? 0;
                       const quantity = watchItems?.[index]?.quantity ?? 0;
+                      const subtotal = price * quantity;
 
                     return (
                         <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
@@ -256,7 +257,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                             </div>
                              <div className="w-32 text-right">
                                 <FormLabel>Subtotal</FormLabel>
-                                <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(totalOrderValue)}</p>
+                                <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
                             </div>
                             <Button
                                 type="button"
