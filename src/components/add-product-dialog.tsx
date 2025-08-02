@@ -65,7 +65,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   }, [isOpen, form]);
 
   function onSubmit(values: FormValues) {
-    const priceAsNumber = parseFloat(values.price.replace(/\./g, '').replace(',', '.'));
+    const priceAsString = values.price || '';
+    const priceAsNumber = parseFloat(priceAsString.replace(/\./g, '').replace(',', '.'));
     const newProduct: Omit<Product, 'id'> = {
       name: values.name,
       quantity: Number(values.quantity) || 0,
