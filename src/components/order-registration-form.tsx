@@ -60,7 +60,7 @@ function formatCurrency(value: number) {
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
-  const [orderToConfirm, setOrderToConfirm] = React.useState<FormValues | null>(null);
+  const [isConfirming, setIsConfirming] = React.useState(false);
   const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
   const [productForQuantity, setProductForQuantity] = React.useState<Product | null>(null);
 
@@ -73,6 +73,22 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
       notes: '',
     },
   });
+  
+  React.useEffect(() => {
+    if (!isPending) {
+        const hasItems = form.getValues('items').length > 0;
+        if (!hasItems) { // Only reset if the form is empty, indicating a successful submission
+            form.reset({
+                customerName: '',
+                address: '',
+                items: [],
+                notes: '',
+                deliveryDate: undefined
+            });
+        }
+    }
+  }, [isPending, form]);
+
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -91,7 +107,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   }, 0);
 
 
-  function handleConfirmation(values: FormValues) {
+  function handlePreSubmit(values: FormValues) {
     // Validate stock availability before opening confirmation
     for (const item of values.items) {
       const product = products.find(p => p.id === item.productId);
@@ -104,7 +120,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         return;
       }
     }
-    setOrderToConfirm(values);
+    setIsConfirming(true);
   }
   
   const handleSelectProduct = (product: Product) => {
@@ -118,28 +134,22 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   };
 
   function handleFinalSubmit() {
-    if (!orderToConfirm) return;
-
+    const values = form.getValues();
     const newOrderData = {
-        customerName: orderToConfirm.customerName,
-        address: orderToConfirm.address,
-        deliveryDate: format(orderToConfirm.deliveryDate, 'yyyy-MM-dd'),
-        items: orderToConfirm.items.map(item => ({
+        customerName: values.customerName,
+        address: values.address,
+        deliveryDate: format(values.deliveryDate, 'yyyy-MM-dd'),
+        items: values.items.map(item => ({
             productId: item.productId,
             productName: products.find(p => p.id === item.productId)?.name || 'Produto desconhecido',
             quantity: item.quantity,
         })),
-        notes: orderToConfirm.notes,
+        notes: values.notes,
     };
     
     onSubmit(newOrderData);
-
-    toast({
-        title: "Pedido Registrado!",
-        description: "O novo pedido foi criado com sucesso.",
-    });
-    setOrderToConfirm(null);
-    form.reset({
+    setIsConfirming(false);
+     form.reset({
         customerName: '',
         address: '',
         items: [],
@@ -151,7 +161,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   return (
     <>
     <Form {...form}>
-    <form onSubmit={form.handleSubmit(handleConfirmation)} className="space-y-8 p-1">
+    <form onSubmit={form.handleSubmit(handlePreSubmit)} className="space-y-8 p-1">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
                 control={form.control}
@@ -334,16 +344,14 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         </div>
     </form>
     </Form>
-    {orderToConfirm && (
-        <ConfirmOrderDialog
-            isOpen={!!orderToConfirm}
-            onOpenChange={() => setOrderToConfirm(null)}
-            customerName={orderToConfirm.customerName}
-            totalValue={totalOrderValue}
-            onConfirm={handleFinalSubmit}
-            isPending={isPending}
-        />
-    )}
+    <ConfirmOrderDialog
+        isOpen={isConfirming}
+        onOpenChange={setIsConfirming}
+        customerName={form.getValues('customerName')}
+        totalValue={totalOrderValue}
+        onConfirm={handleFinalSubmit}
+        isPending={isPending}
+    />
     <SelectProductDialog
         isOpen={isSelectProductOpen}
         onOpenChange={setSelectProductOpen}

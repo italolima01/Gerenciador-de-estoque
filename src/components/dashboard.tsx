@@ -97,9 +97,10 @@ export function Dashboard() {
     });
   };
   
-  const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+    const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(async () => {
       const productUpdates: { [productId: string]: number } = {};
+      
       for (const item of newOrderData.items) {
           const product = products.find(p => p.id === item.productId);
           if(product && product.quantity >= item.quantity) {
@@ -108,16 +109,29 @@ export function Dashboard() {
              toast({
                 variant: "destructive",
                 title: "Erro de Estoque",
-                description: `O produto "${item.productName}" não tem estoque suficiente.`,
+                description: `O produto "${product?.name || item.productName}" não tem estoque suficiente.`,
             });
-            return;
+            return; // Abort submission
           }
       }
-
-      await registerOrder(newOrderData, productUpdates);
-      setRegisterOrderSheetOpen(false);
+      try {
+        await registerOrder(newOrderData, productUpdates);
+        setRegisterOrderSheetOpen(false);
+        toast({
+          title: "Pedido Registrado!",
+          description: "O novo pedido foi criado com sucesso.",
+        });
+      } catch (error) {
+        console.error("Failed to register order:", error)
+        toast({
+            variant: "destructive",
+            title: "Erro ao Registrar Pedido",
+            description: "Não foi possível salvar o novo pedido. Tente novamente.",
+        });
+      }
     });
   };
+
 
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(async () => {
