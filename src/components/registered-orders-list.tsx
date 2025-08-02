@@ -42,7 +42,7 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
         <h3 className="text-xl font-semibold tracking-tight text-muted-foreground">Nenhum Pedido Registrado</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Vá para a aba "Registrar Pedido" para criar o primeiro.
+          Clique em &quot;Registrar Pedido&quot; para criar o primeiro.
         </p>
       </div>
     );
@@ -53,7 +53,7 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
       <TableHeader>
         <TableRow>
           <TableHead>Cliente</TableHead>
-          <TableHead className="hidden sm:table-cell">Data do Pedido</TableHead>
+          <TableHead className="hidden sm:table-cell">Endereço</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Ações</TableHead>
@@ -68,8 +68,8 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
                 Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
               </div>
             </TableCell>
-            <TableCell className="hidden sm:table-cell">
-              {format(parseISO(order.createdAt), 'dd/MM/yyyy')}
+            <TableCell className="hidden sm:table-cell max-w-xs truncate">
+              {order.address}
             </TableCell>
             <TableCell className="hidden md:table-cell">
               {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}

@@ -36,6 +36,7 @@ const orderItemSchema = z.object({
 
 const formSchema = z.object({
   customerName: z.string().min(2, { message: 'O nome do cliente deve ter pelo menos 2 caracteres.' }),
+  address: z.string().min(5, { message: 'O endereço deve ter pelo menos 5 caracteres.' }),
   deliveryDate: z.date({ required_error: 'A data de entrega é obrigatória.' }),
   items: z.array(orderItemSchema).min(1, 'O pedido deve ter pelo menos um item.'),
   notes: z.string().optional(),
@@ -67,6 +68,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     resolver: zodResolver(formSchema),
     defaultValues: {
       customerName: '',
+      address: '',
       items: [],
       notes: '',
     },
@@ -120,6 +122,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
 
     const newOrderData = {
         customerName: orderToConfirm.customerName,
+        address: orderToConfirm.address,
         deliveryDate: format(orderToConfirm.deliveryDate, 'yyyy-MM-dd'),
         items: orderToConfirm.items.map(item => ({
             productId: item.productId,
@@ -138,6 +141,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     setOrderToConfirm(null);
     form.reset({
         customerName: '',
+        address: '',
         items: [],
         notes: '',
         deliveryDate: undefined
@@ -205,6 +209,20 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
             />
         </div>
         
+        <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Endereço de Entrega</FormLabel>
+                <FormControl>
+                    <Input placeholder="Ex: Rua das Flores, 123, Bairro, Cidade - Estado" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+
         <div>
             <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
              <div className="space-y-4">

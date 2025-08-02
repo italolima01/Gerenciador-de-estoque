@@ -73,15 +73,26 @@ export function Dashboard() {
 
   const handleAddProduct = (newProduct: Product) => {
     startTransition(async () => {
-      // Since the new product doesn't have sales data, we can create a default status.
-      const newProductWithStatus: ProductWithStatus = { 
-        ...newProduct, 
-        zone: 'green',
-        restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
-        confidenceLevel: 'low'
-      };
-      setProducts(prev => [newProductWithStatus, ...prev]);
-      setAddDialogOpen(false);
+      try {
+        const newProductWithStatus: ProductWithStatus = { 
+          ...newProduct, 
+          zone: 'green',
+          restockRecommendation: 'Aguardando dados de vendas para gerar recomendação.',
+          confidenceLevel: 'low'
+        };
+        setProducts(prev => [newProductWithStatus, ...prev]);
+        setAddDialogOpen(false);
+        toast({
+            title: "Produto Adicionado!",
+            description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
+        });
+      } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Adicionar Produto",
+            description: "Não foi possível salvar o novo produto. Tente novamente.",
+        });
+      }
     });
   };
 
@@ -450,4 +461,5 @@ export function Dashboard() {
   );
 
     
+
 

@@ -25,6 +25,7 @@ export type OrderItem = {
 export type Order = {
   id: string;
   customerName: string;
+  address: string;
   deliveryDate: string; // YYYY-MM-DD
   items: OrderItem[];
   notes?: string;

@@ -12,7 +12,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import type { Order } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Separator } from './ui/separator';
-import { Package, User, Calendar, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Package, User, Calendar, FileText, CheckCircle, XCircle, Clock, MapPin } from 'lucide-react';
 import type { Product } from '@/lib/types';
 
 interface OrderDetailsDialogProps {
@@ -73,6 +73,14 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
                 </div>
             </div>
             
+            <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                    <p className="text-sm text-muted-foreground">Endereço de Entrega</p>
+                    <p className="font-semibold">{order.address}</p>
+                </div>
+            </div>
+
             <div className="flex items-center justify-between rounded-lg border p-4">
                 <span className="text-sm font-medium text-muted-foreground">Status do Pedido</span>
                 <Badge variant={statusInfo.variant} className="text-sm">
