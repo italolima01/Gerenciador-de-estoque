@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle, Undo2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface RegisteredOrdersListProps {
@@ -47,6 +47,13 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
       </div>
     );
   }
+  
+  const handleReopenOrder = (order: Order) => {
+    // This is a placeholder for potential future functionality
+    // For now, it could simply call onOrderEdit or a new handler
+    onOrderEdit(order); // Or create a new handler to change status back to 'Pendente'
+  }
+
 
   return (
     <Table>
@@ -82,28 +89,32 @@ export function RegisteredOrdersList({ orders, onOrderSelect, onOrderEdit, onOrd
             <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" disabled={order.status === 'Cancelado' || order.status === 'Concluído'}>
+                    <Button size="icon" variant="ghost">
                       <MoreHorizontal className="h-4 w-4" />
                       <span className="sr-only">Mais ações</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsComplete(order); }} disabled={order.status === 'Concluído'}>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Marcar como Concluído
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
+                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                        onClick={(e) => { e.stopPropagation(); onOrderCancel(order)}} 
-                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    >
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancelar Pedido
-                    </DropdownMenuItem>
+                    {order.status === 'Pendente' && (
+                        <>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsComplete(order); }}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Marcar como Concluído
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                                onClick={(e) => { e.stopPropagation(); onOrderCancel(order)}} 
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Pedido
+                            </DropdownMenuItem>
+                        </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
             </TableCell>
