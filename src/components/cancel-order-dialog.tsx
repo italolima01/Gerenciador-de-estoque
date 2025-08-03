@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -15,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import type { Order } from '@/lib/types';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
-interface CancelOrderDialogProps {
+interface DeleteOrderDialogProps {
   order: Order;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -23,24 +22,24 @@ interface CancelOrderDialogProps {
   isPending: boolean;
 }
 
-export function CancelOrderDialog({
+export function DeleteOrderDialog({
   order,
   isOpen,
   onOpenChange,
   onConfirm,
   isPending,
-}: CancelOrderDialogProps) {
+}: DeleteOrderDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-destructive" />
-            Tem certeza que deseja cancelar?
+            Tem certeza que deseja excluir?
           </AlertDialogTitle>
           <AlertDialogDescription>
             Esta ação não pode ser desfeita. O pedido para{' '}
-            <strong>{order.customerName}</strong> será marcado como cancelado e os itens retornarão ao estoque.
+            <strong>{order.customerName}</strong> será permanentemente excluído e os itens retornarão ao estoque.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -48,7 +47,7 @@ export function CancelOrderDialog({
           <AlertDialogAction asChild>
             <Button onClick={onConfirm} disabled={isPending} variant="destructive">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sim, cancelar pedido
+              Sim, excluir pedido
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

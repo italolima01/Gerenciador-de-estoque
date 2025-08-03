@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw, GripVertical } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw, GripVertical, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -33,12 +33,12 @@ interface RegisteredOrdersListProps {
   onOrderEdit: (order: Order) => void;
   onOrderStatusChange: (orderId: string, status: Order['status']) => void;
   onMarkAsComplete: (order: Order) => void;
+  onOrderDelete: (order: Order) => void;
 }
 
 const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Pendente: 'secondary',
   Concluído: 'success',
-  Cancelado: 'destructive',
 };
 
 const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading'>) => {
@@ -92,30 +92,29 @@ const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<Register
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-
+                    
                     {order.status === 'Pendente' && (
-                        <>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onMarkAsComplete(order); }}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Marcar como Concluído
-                            </DropdownMenuItem>
-                             <DropdownMenuItem 
-                                onClick={(e) => { e.stopPropagation(); props.onOrderStatusChange(order.id, 'Cancelado')}} 
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Pedido
-                            </DropdownMenuItem>
-                        </>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onMarkAsComplete(order); }}>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Marcar como Concluído
+                        </DropdownMenuItem>
                     )}
 
-                    {(order.status === 'Concluído' || order.status === 'Cancelado') && (
+                    {order.status === 'Concluído' && (
                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderStatusChange(order.id, 'Pendente')}}>
                             <RotateCcw className="mr-2 h-4 w-4" />
                             Reverter para Pendente
                         </DropdownMenuItem>
                     )}
+
+                    <DropdownMenuSeparator />
+                     <DropdownMenuItem 
+                        onClick={(e) => { e.stopPropagation(); props.onOrderDelete(order)}} 
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir Pedido
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
             </TableCell>

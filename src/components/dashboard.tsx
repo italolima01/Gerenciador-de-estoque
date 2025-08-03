@@ -25,7 +25,7 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
-import { CancelOrderDialog } from './cancel-order-dialog';
+import { DeleteOrderDialog } from './delete-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
@@ -50,7 +50,7 @@ export function Dashboard() {
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
-  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
+  const [selectedOrderForDelete, setSelectedOrderForDelete] = useState<Order | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
   const [isConfirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
@@ -68,34 +68,37 @@ export function Dashboard() {
     return () => clearTimeout(timer);
   }, []);
   
-  const fetchProductAlert = useCallback(async (product: Product) => {
-    // Always fetch alert to ensure data is fresh
-    try {
-        const alert = await getRestockAlert(product);
-        setProductAlerts(prev => ({ ...prev, [product.id]: alert }));
-    } catch (error) {
-        console.error(`Failed to get restock alert for ${product.name}`, error);
-        // Set a default error state, which can be re-evaluated
-        setProductAlerts(prev => ({
-             ...prev,
-             [product.id]: {
-                zone: 'red',
-                restockRecommendation: 'Erro ao obter recomendação.',
-                confidenceLevel: 'low',
-            }
-        }));
-    }
-  }, []);
+  const fetchProductAlerts = useCallback(async (productsToFetch: Product[]) => {
+    const alertsToUpdate = productsToFetch.map(p => {
+        return getRestockAlert({ product: p, orders });
+    });
 
-  useEffect(() => {
-    products.forEach(p => fetchProductAlert(p));
-  }, [products, orders, fetchProductAlert]);
+    try {
+        const results = await Promise.all(alertsToUpdate);
+        const newAlerts: Record<string, GenerateRestockAlertOutput> = {};
+        productsToFetch.forEach((p, index) => {
+            newAlerts[p.id] = results[index];
+        });
+        setProductAlerts(prev => ({ ...prev, ...newAlerts }));
+    } catch (error) {
+        console.error("Failed to fetch some restock alerts", error);
+        // Optionally show a toast to the user
+    }
+}, [orders]);
+
+useEffect(() => {
+    if (products.length > 0) {
+        fetchProductAlerts(products);
+    }
+}, [products, orders, fetchProductAlerts]);
 
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(() => {
       const newProduct = { ...newProductData, id: uuidv4() };
-      setProducts(prev => [newProduct, ...prev]);
+      const updatedProducts = [newProduct, ...products];
+      setProducts(updatedProducts);
+      fetchProductAlerts([newProduct]);
       setAddDialogOpen(false);
       toast({
           title: "Produto Adicionado!",
@@ -106,7 +109,9 @@ export function Dashboard() {
 
   const handleEditProduct = (updatedProductData: Product) => {
     startTransition(() => {
-      setProducts(prev => prev.map(p => p.id === updatedProductData.id ? updatedProductData : p));
+      const updatedProducts = products.map(p => p.id === updatedProductData.id ? updatedProductData : p)
+      setProducts(updatedProducts);
+      fetchProductAlerts([updatedProductData]);
       setSelectedProductForEdit(null);
        toast({
           title: "Produto Atualizado!",
@@ -129,32 +134,20 @@ export function Dashboard() {
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
-        // Create a temporary copy to perform checks
+        const productsToUpdate: Product[] = [];
         const tempProducts = JSON.parse(JSON.stringify(products));
 
-        // 1. Check stock and prepare updates
         for (const item of newOrderData.items) {
           const productIndex = tempProducts.findIndex((p: Product) => p.id === item.productId);
           if (productIndex === -1 || tempProducts[productIndex].quantity < item.quantity) {
              throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${tempProducts[productIndex]?.quantity ?? 0}`);
           }
-          // Debit from the temporary copy for subsequent checks within the same order
           tempProducts[productIndex].quantity -= item.quantity;
+          productsToUpdate.push(tempProducts[productIndex]);
         }
 
-        // 2. All checks passed, now update the actual product state
-        setProducts(currentProducts => {
-            const updatedProducts = [...currentProducts];
-            for (const item of newOrderData.items) {
-                const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    updatedProducts[productIndex].quantity -= item.quantity;
-                }
-            }
-            return updatedProducts;
-        });
+        setProducts(tempProducts);
         
-        // 3. Create the new order
         const newOrder = { 
           ...newOrderData, 
           id: uuidv4(), 
@@ -162,6 +155,8 @@ export function Dashboard() {
           status: 'Pendente' as const
         };
         setOrders(prev => [newOrder, ...prev]);
+        
+        fetchProductAlerts(productsToUpdate);
 
         setRegisterOrderSheetOpen(false);
         toast({
@@ -188,61 +183,41 @@ export function Dashboard() {
           throw new Error("Pedido original não encontrado.");
         }
 
-        // Do not adjust stock for orders that are not pending
-        if (originalOrder.status !== 'Pendente') {
-            setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
-            setSelectedOrderForEdit(null);
-            toast({
-              title: "Pedido Atualizado!",
-              description: "Os detalhes do pedido foram atualizados. O estoque não foi alterado pois o pedido não está pendente.",
-            });
-            return;
-        }
-
         const stockAdjustments: { [productId: string]: number } = {};
-
-        // Calculate stock to be returned from the original order
-        for (const item of originalOrder.items) {
-            stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
+        
+        // If the order was NOT 'Pendente', stock was not touched, so we don't need to add it back
+        if(originalOrder.status === 'Pendente') {
+            for (const item of originalOrder.items) {
+                stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
+            }
         }
         
-        // Calculate stock to be debited for the updated order
+        // Subtract new items from stock
         for (const item of updatedOrderData.items) {
             stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) - item.quantity;
         }
 
-        // Create a temporary copy to check if there is enough stock for the final changes
         const tempProducts = JSON.parse(JSON.stringify(products));
+        const productsToUpdate: Product[] = [];
+
         for(const productId in stockAdjustments) {
             const productIndex = tempProducts.findIndex((p: Product) => p.id === productId);
             if (productIndex === -1) {
-                // This case should ideally not happen if products are managed correctly
                 const productName = updatedOrderData.items.find(i => i.productId === productId)?.productName || 'Produto desconhecido';
                 throw new Error(`Produto ${productName} não encontrado no inventário.`);
             }
-            // Check if the final quantity would be negative
             if (tempProducts[productIndex].quantity + stockAdjustments[productId] < 0) {
                  throw new Error(`Estoque insuficiente para ${tempProducts[productIndex].name}.`);
             }
-            // Update temp for subsequent checks
             tempProducts[productIndex].quantity += stockAdjustments[productId];
+            productsToUpdate.push(tempProducts[productIndex]);
         }
 
-        // All checks passed, apply the updates
-        setProducts(currentProducts => {
-            const updatedProducts = [...currentProducts];
-            for(const productId in stockAdjustments) {
-                 const productIndex = updatedProducts.findIndex(p => p.id === productId);
-                 if (productIndex !== -1) {
-                    updatedProducts[productIndex].quantity += stockAdjustments[productId];
-                 }
-            }
-            return updatedProducts;
-        });
-
-        // Update the order itself
+        setProducts(tempProducts);
         setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
         
+        fetchProductAlerts(productsToUpdate);
+
         setSelectedOrderForEdit(null);
          toast({
           title: "Pedido Atualizado!",
@@ -257,6 +232,42 @@ export function Dashboard() {
             description: errorMessage,
         });
       }
+    });
+  }
+
+  const handleDeleteOrder = (orderId: string) => {
+    startTransition(() => {
+        const orderToDelete = orders.find(o => o.id === orderId);
+        if (!orderToDelete) {
+            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+            return;
+        }
+
+        const productsToUpdate: Product[] = [];
+        if (orderToDelete.status === 'Pendente') {
+            const tempProducts = JSON.parse(JSON.stringify(products));
+            for (const item of orderToDelete.items) {
+                const productIndex = tempProducts.findIndex((p: Product) => p.id === item.productId);
+                if (productIndex !== -1) {
+                    tempProducts[productIndex].quantity += item.quantity;
+                    productsToUpdate.push(tempProducts[productIndex]);
+                }
+            }
+            setProducts(tempProducts);
+        }
+
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+
+        if (productsToUpdate.length > 0) {
+            fetchProductAlerts(productsToUpdate);
+        }
+
+        setSelectedOrderForDelete(null);
+
+        toast({
+            title: "Pedido Excluído!",
+            description: "O pedido foi removido e os itens retornaram ao estoque.",
+        });
     });
   }
   
@@ -276,64 +287,18 @@ export function Dashboard() {
         const originalStatus = order.status;
         if (originalStatus === newStatus) return;
 
-        try {
-            setProducts(currentProducts => {
-                const updatedProducts = JSON.parse(JSON.stringify(currentProducts));
-
-                const adjustStock = (multiplier: 1 | -1) => { // 1 to restore, -1 to debit
-                     for (const item of order.items) {
-                        const productIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
-                        if (productIndex !== -1) {
-                            updatedProducts[productIndex].quantity += item.quantity * multiplier;
-                        }
-                    }
-                }
-                
-                // --- Logic for CANCELLING an order ---
-                // If an order was NOT cancelled and is now being cancelled, RESTORE stock.
-                if (originalStatus !== 'Cancelado' && newStatus === 'Cancelado') {
-                    adjustStock(1);
-                } 
-                // --- Logic for UN-CANCELLING an order ---
-                // If an order WAS cancelled and is now being moved to another state, DEBIT stock.
-                else if (originalStatus === 'Cancelado' && newStatus !== 'Cancelado') {
-                    // Check for sufficient stock before debiting
-                    for (const item of order.items) {
-                        const pIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
-                        if (pIndex === -1 || updatedProducts[pIndex].quantity < item.quantity) {
-                            throw new Error(`Estoque insuficiente para "${item.productName}" ao reverter o cancelamento.`);
-                        }
-                    }
-                    adjustStock(-1);
-                }
-                
-                // No other status changes affect the stock. It's debited on creation, restored on cancellation.
-                
-                return updatedProducts;
-            });
-
-            // --- Update Order Status and Notes ---
-            setOrders(prev => prev.map(o => {
-                if (o.id === orderId) {
-                    const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
-                    return { ...o, status: newStatus, notes: newNotes };
-                }
-                return o;
-            }));
-            
-            toast({
-                title: "Status do Pedido Alterado!",
-                description: `O pedido foi atualizado para "${newStatus}".`,
-            });
-        } catch (error) {
-             console.error("Failed to change order status:", error);
-             const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
-             toast({
-                variant: "destructive",
-                title: "Erro ao Alterar Status",
-                description: errorMessage,
-            });
-        }
+        setOrders(prev => prev.map(o => {
+            if (o.id === orderId) {
+                const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
+                return { ...o, status: newStatus, notes: newNotes };
+            }
+            return o;
+        }));
+        
+        toast({
+            title: "Status do Pedido Alterado!",
+            description: `O pedido foi atualizado para "${newStatus}".`,
+        });
     });
   }
 
@@ -504,6 +469,7 @@ export function Dashboard() {
                         onOrderEdit={setSelectedOrderForEdit}
                         onOrderStatusChange={handleChangeOrderStatus}
                         onMarkAsComplete={handleOpenCompleteDialog}
+                        onOrderDelete={setSelectedOrderForDelete}
                     />
                 </DndContext>
               </CardContent>
@@ -550,7 +516,7 @@ export function Dashboard() {
           product={selectedProductForDelete}
           isOpen={!!selectedProductForDelete}
           onOpenChange={() => setSelectedProductForDelete(null)}
-          onDelete={() => handleDeleteProduct(selectedProductForDelete.id)}
+          onConfirm={() => handleDeleteProduct(selectedProductForDelete.id)}
           isPending={isPending}
         />
       )}
@@ -569,21 +535,18 @@ export function Dashboard() {
           order={selectedOrderForEdit}
           products={products}
           isOpen={!!selectedOrderForEdit}
-          onOpenChange={() => setSelectedOrderForEdit(null)}
+          onOpenchaonOpenChange={() => setSelectedOrderForEdit(null)}
           onOrderUpdate={handleOrderUpdate}
           isPending={isPending}
         />
       )}
 
-      {selectedOrderForCancel && (
-        <CancelOrderDialog
-          order={selectedOrderForCancel}
-          isOpen={!!selectedOrderForCancel}
-          onOpenChange={() => setSelectedOrderForCancel(null)}
-          onConfirm={() => {
-            handleChangeOrderStatus(selectedOrderForCancel.id, 'Cancelado')
-            setSelectedOrderForCancel(null)
-          }}
+      {selectedOrderForDelete && (
+        <DeleteOrderDialog
+          order={selectedOrderForDelete}
+          isOpen={!!selectedOrderForDelete}
+          onOpenChange={() => setSelectedOrderForDelete(null)}
+          onConfirm={() => handleDeleteOrder(selectedOrderForDelete.id)}
           isPending={isPending}
         />
       )}

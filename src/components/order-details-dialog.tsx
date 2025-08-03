@@ -25,7 +25,6 @@ interface OrderDetailsDialogProps {
 const statusInfoMap: { [key in Order['status']]: { variant: BadgeProps['variant'], Icon: React.ElementType } } = {
   Pendente: { variant: 'secondary', Icon: Clock },
   Concluído: { variant: 'success', Icon: CheckCircle },
-  Cancelado: { variant: 'destructive', Icon: XCircle },
 };
 
 function formatCurrency(value: number) {

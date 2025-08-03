@@ -22,7 +22,7 @@ export type Order = {
   deliveryDate: string; // YYYY-MM-DD
   items: OrderItem[];
   notes?: string;
-  status: 'Pendente' | 'Concluído' | 'Cancelado';
+  status: 'Pendente' | 'Concluído';
   createdAt: string; // ISO date string
 };
 
@@ -31,4 +31,10 @@ export type GenerateRestockAlertOutput = {
   zone: 'green' | 'yellow' | 'red';
   restockRecommendation: string;
   confidenceLevel: string;
+};
+
+// Type for the AI flow that generates intelligent restock alerts
+export type GenerateIntelligentRestockAlertInput = {
+  product: Product;
+  orders: Order[];
 };
