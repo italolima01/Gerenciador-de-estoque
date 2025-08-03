@@ -19,9 +19,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw, GripVertical } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import * as React from 'react';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
@@ -38,7 +41,89 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrderEdit, onOrderStatusChange, onMarkAsComplete }: RegisteredOrdersListProps) {
+const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading'>) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({id: order.id});
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <TableRow ref={setNodeRef} style={style} onClick={() => props.onOrderSelect(order)} className="cursor-pointer">
+            <TableCell className="w-12">
+                <Button variant="ghost" size="icon" {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className="cursor-grab">
+                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </Button>
+            </TableCell>
+            <TableCell>
+              <div className="font-medium">{order.customerName}</div>
+              <div className="text-sm text-muted-foreground md:hidden">
+                Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+              </div>
+            </TableCell>
+            <TableCell className="hidden sm:table-cell max-w-xs truncate">
+              {order.address}
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+              {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+            </TableCell>
+            <TableCell>
+              <Badge variant={statusVariantMap[order.status]}>
+                {order.status}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button size="icon" variant="ghost">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Mais ações</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderEdit(order)}}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar Pedido
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+
+                    {order.status === 'Pendente' && (
+                        <>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onMarkAsComplete(order); }}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Marcar como Concluído
+                            </DropdownMenuItem>
+                             <DropdownMenuItem 
+                                onClick={(e) => { e.stopPropagation(); props.onOrderStatusChange(order.id, 'Cancelado')}} 
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Pedido
+                            </DropdownMenuItem>
+                        </>
+                    )}
+
+                    {(order.status === 'Concluído' || order.status === 'Cancelado') && (
+                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderStatusChange(order.id, 'Pendente')}}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Reverter para Pendente
+                        </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </TableCell>
+          </TableRow>
+    )
+}
+
+export function RegisteredOrdersList({ orders, isLoading, ...props }: RegisteredOrdersListProps) {
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -73,6 +158,7 @@ export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrder
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-12"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden sm:table-cell">Endereço</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
@@ -81,67 +167,11 @@ export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrder
         </TableRow>
       </TableHeader>
       <TableBody>
-        {orders.map((order) => (
-          <TableRow key={order.id} onClick={() => onOrderSelect(order)} className="cursor-pointer">
-            <TableCell>
-              <div className="font-medium">{order.customerName}</div>
-              <div className="text-sm text-muted-foreground md:hidden">
-                Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
-              </div>
-            </TableCell>
-            <TableCell className="hidden sm:table-cell max-w-xs truncate">
-              {order.address}
-            </TableCell>
-            <TableCell className="hidden md:table-cell">
-              {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
-            </TableCell>
-            <TableCell>
-              <Badge variant={statusVariantMap[order.status]}>
-                {order.status}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Mais ações</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Editar Pedido
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-
-                    {order.status === 'Pendente' && (
-                        <>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsComplete(order); }}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Marcar como Concluído
-                            </DropdownMenuItem>
-                             <DropdownMenuItem 
-                                onClick={(e) => { e.stopPropagation(); onOrderStatusChange(order.id, 'Cancelado')}} 
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Pedido
-                            </DropdownMenuItem>
-                        </>
-                    )}
-
-                    {(order.status === 'Concluído' || order.status === 'Cancelado') && (
-                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderStatusChange(order.id, 'Pendente')}}>
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Reverter para Pendente
-                        </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-            </TableCell>
-          </TableRow>
-        ))}
+        <SortableContext items={orders.map(o => o.id)} strategy={verticalListSortingStrategy}>
+            {orders.map((order) => (
+              <DraggableTableRow key={order.id} order={order} {...props} />
+            ))}
+        </SortableContext>
       </TableBody>
     </Table>
   );

@@ -4,6 +4,8 @@
 import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 
 import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
 import { products as initialProducts, orders as initialOrders } from '@/lib/data';
@@ -67,15 +69,27 @@ export function Dashboard() {
   }, []);
   
   const fetchProductAlert = useCallback(async (product: Product) => {
-    if (!productAlerts[product.id]) { // Fetch only if not already fetched
-      const alert = await getRestockAlert(product);
-      setProductAlerts(prev => ({ ...prev, [product.id]: alert }));
+    // Always fetch alert to ensure data is fresh
+    try {
+        const alert = await getRestockAlert(product);
+        setProductAlerts(prev => ({ ...prev, [product.id]: alert }));
+    } catch (error) {
+        console.error(`Failed to get restock alert for ${product.name}`, error);
+        // Set a default error state, which can be re-evaluated
+        setProductAlerts(prev => ({
+             ...prev,
+             [product.id]: {
+                zone: 'red',
+                restockRecommendation: 'Erro ao obter recomendação.',
+                confidenceLevel: 'low',
+            }
+        }));
     }
-  }, [productAlerts]);
+  }, []);
 
   useEffect(() => {
     products.forEach(p => fetchProductAlert(p));
-  }, [products, fetchProductAlert]);
+  }, [products, orders, fetchProductAlert]);
 
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
@@ -330,6 +344,18 @@ export function Dashboard() {
     setAddNoteDialogOpen(false);
   }
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const {active, over} = event;
+    if (active.id !== over?.id) {
+      setOrders((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+
   const filteredProducts = useMemo(() => {
     if (!searchQuery) {
       return products;
@@ -470,14 +496,16 @@ export function Dashboard() {
             </div>
             <Card className="bg-card/50">
               <CardContent className="pt-6">
-                <RegisteredOrdersList 
-                    orders={orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
-                    isLoading={isLoading}
-                    onOrderSelect={(order) => setSelectedOrderForDetails(order)}
-                    onOrderEdit={setSelectedOrderForEdit}
-                    onOrderStatusChange={handleChangeOrderStatus}
-                    onMarkAsComplete={handleOpenCompleteDialog}
-                />
+                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <RegisteredOrdersList 
+                        orders={orders}
+                        isLoading={isLoading}
+                        onOrderSelect={(order) => setSelectedOrderForDetails(order)}
+                        onOrderEdit={setSelectedOrderForEdit}
+                        onOrderStatusChange={handleChangeOrderStatus}
+                        onMarkAsComplete={handleOpenCompleteDialog}
+                    />
+                </DndContext>
               </CardContent>
             </Card>
           </TabsContent>
