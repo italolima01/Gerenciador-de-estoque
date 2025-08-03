@@ -115,27 +115,15 @@ export function Dashboard() {
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
-        // 1. Check stock
+        // 1. Check stock, but don't decrease it yet.
         for (const item of newOrderData.items) {
           const product = products.find(p => p.id === item.productId);
           if (!product || product.quantity < item.quantity) {
-             throw new Error(`Estoque insuficiente para ${item.productName}.`);
+             throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product?.quantity ?? 0}`);
           }
         }
-        
-        // 2. Update stock
-        setProducts(prevProducts => {
-          const updatedProducts = [...prevProducts];
-          for (const item of newOrderData.items) {
-             const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
-             if (productIndex !== -1) {
-                updatedProducts[productIndex].quantity -= item.quantity;
-             }
-          }
-          return updatedProducts;
-        });
 
-        // 3. Create order
+        // 2. Create order with 'Pendente' status
         const newOrder = { 
           ...newOrderData, 
           id: uuidv4(), 
@@ -147,7 +135,7 @@ export function Dashboard() {
         setRegisterOrderSheetOpen(false);
         toast({
           title: "Pedido Registrado!",
-          description: "O novo pedido foi criado com sucesso.",
+          description: "O novo pedido foi criado e aguarda conclusão.",
         });
       } catch (error) {
         console.error("Failed to register order:", error);
@@ -164,44 +152,15 @@ export function Dashboard() {
 
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(() => {
-      const originalOrder = orders.find(o => o.id === updatedOrderData.id);
-      if (!originalOrder) {
-        toast({ variant: "destructive", title: "Erro", description: "Pedido original não encontrado." });
-        return;
-      }
-      
-       try {
-         // Calculate stock changes
-        const stockChanges: Record<string, number> = {};
-        originalOrder.items.forEach(item => {
-            stockChanges[item.productId] = (stockChanges[item.productId] || 0) + item.quantity;
-        });
-        updatedOrderData.items.forEach(item => {
-            stockChanges[item.productId] = (stockChanges[item.productId] || 0) - item.quantity;
-        });
-
-        // Check if there is enough stock
-        for(const productId in stockChanges) {
-            if(stockChanges[productId] < 0) { // needs more stock
-                const product = products.find(p => p.id === productId);
-                if(!product || product.quantity < Math.abs(stockChanges[productId])) {
-                    throw new Error(`Estoque insuficiente para ${product?.name || 'produto'}.`);
-                }
-            }
+      try {
+        // Check stock for the updated items, but don't modify it.
+        for (const item of updatedOrderData.items) {
+          const product = products.find(p => p.id === item.productId);
+           if (!product || product.quantity < item.quantity) {
+             throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product?.quantity ?? 0}`);
+          }
         }
-
-        // Update products stock
-        setProducts(prevProducts => {
-            const newProducts = [...prevProducts];
-            for(const productId in stockChanges) {
-                const productIndex = newProducts.findIndex(p => p.id === productId);
-                if(productIndex !== -1) {
-                    newProducts[productIndex].quantity += stockChanges[productId];
-                }
-            }
-            return newProducts;
-        });
-
+        
         // Update the order
         setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
         
@@ -229,19 +188,7 @@ export function Dashboard() {
 
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(() => {
-        // Restore stock
-        setProducts(prevProducts => {
-            const newProducts = [...prevProducts];
-            for(const item of orderToCancel.items) {
-                const productIndex = newProducts.findIndex(p => p.id === item.productId);
-                if(productIndex !== -1) {
-                    newProducts[productIndex].quantity += item.quantity;
-                }
-            }
-            return newProducts;
-        });
-
-        // Update order status
+        // Stock is no longer restored here. We just update the status.
         setOrders(prevOrders => prevOrders.map(o => o.id === orderToCancel.id ? {...o, status: 'Cancelado'} : o));
        
         setSelectedOrderForCancel(null);
@@ -256,22 +203,59 @@ export function Dashboard() {
 
   const handleCompleteOrder = (orderId: string, note?: string) => {
       startTransition(() => {
-        setOrders(prev => prev.map(o => {
-          if (o.id === orderId) {
-            const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
-            return { ...o, status: 'Concluído', notes: note ? newNotes : o.notes };
-          }
-          return o;
-        }));
-        
-        setOrderToComplete(null);
-        setConfirmCompleteOpen(false);
-        setAddNoteDialogOpen(false);
-        
-         toast({
-            title: "Pedido Concluído!",
-            description: `O pedido foi marcado como concluído.`,
-        });
+        const orderToComplete = orders.find(o => o.id === orderId);
+        if (!orderToComplete) {
+            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+            return;
+        }
+
+        try {
+            // Check stock again at the time of completion
+            for (const item of orderToComplete.items) {
+                const product = products.find(p => p.id === item.productId);
+                if (!product || product.quantity < item.quantity) {
+                    throw new Error(`Estoque insuficiente para ${item.productName} no momento da conclusão.`);
+                }
+            }
+
+            // Decrease stock now
+            setProducts(prevProducts => {
+                const updatedProducts = [...prevProducts];
+                for (const item of orderToComplete.items) {
+                    const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+                    if (productIndex !== -1) {
+                        updatedProducts[productIndex].quantity -= item.quantity;
+                    }
+                }
+                return updatedProducts;
+            });
+
+            // Update order status
+            setOrders(prev => prev.map(o => {
+              if (o.id === orderId) {
+                const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
+                return { ...o, status: 'Concluído' as const, notes: note ? newNotes : o.notes };
+              }
+              return o;
+            }));
+            
+            setOrderToComplete(null);
+            setConfirmCompleteOpen(false);
+            setAddNoteDialogOpen(false);
+            
+             toast({
+                title: "Pedido Concluído!",
+                description: `O pedido foi finalizado e o estoque foi atualizado.`,
+            });
+        } catch (error) {
+             console.error("Failed to complete order:", error);
+             const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
+             toast({
+                variant: "destructive",
+                title: "Erro ao Concluir Pedido",
+                description: errorMessage,
+            });
+        }
       });
   };
   

@@ -114,13 +114,13 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
 
   function getAvailableStock(productId: string): number {
       const product = products.find(p => p.id === productId);
-      const originalOrderItem = order.items.find(item => item.productId === productId);
-      const originalQuantity = originalOrderItem?.quantity || 0;
-      return (product?.quantity || 0) + originalQuantity;
+      // Since stock is no longer tied to the original order, we just return the current product quantity.
+      return product?.quantity || 0;
   }
 
 
   function handleSubmit(values: FormValues) {
+    // Check stock availability before submitting
     for (const item of values.items) {
       const product = products.find(p => p.id === item.productId);
       const availableStock = getAvailableStock(item.productId);
@@ -149,11 +149,6 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
     };
     
     onOrderUpdate(updatedOrderData);
-
-    toast({
-        title: "Pedido Atualizado!",
-        description: "As alterações no pedido foram salvas com sucesso.",
-    });
   }
   
   const handleSelectProduct = (product: Product) => {
@@ -166,7 +161,11 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
     setProductForQuantity(null);
   };
 
-  const availableProducts = products.filter(p => p.quantity > 0 && !watchedItems.some(item => item.productId === p.id));
+  const availableProducts = products.filter(p => {
+    const currentItem = watchedItems.find(item => item.productId === p.id);
+    if (currentItem) return true; // Product is already in the order, can be edited
+    return p.quantity > 0; // Product is not in the order, must have stock
+  });
 
 
   return (
@@ -360,7 +359,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
      <SelectProductDialog
         isOpen={isSelectProductOpen}
         onOpenChange={setSelectProductOpen}
-        products={availableProducts}
+        products={availableProducts.filter(p => !watchedItems.some(item => item.productId === p.id))}
         onSelectProduct={handleSelectProduct}
       />
     <SelectQuantityDialog
