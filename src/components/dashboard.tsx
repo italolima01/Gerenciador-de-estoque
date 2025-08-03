@@ -260,62 +260,66 @@ export function Dashboard() {
         }
 
         const originalStatus = order.status;
+        if (originalStatus === newStatus) return;
 
-        // --- Stock Adjustment Logic ---
-        // Debited on Pending -> Completed
-        // Restored on Completed -> Pending/Cancelled
-        // Restored on Pending -> Cancelled
-        setProducts(currentProducts => {
-            const updatedProducts = JSON.parse(JSON.stringify(currentProducts));
+        try {
+            setProducts(currentProducts => {
+                const updatedProducts = JSON.parse(JSON.stringify(currentProducts));
 
-            const adjustStock = (multiplier: 1 | -1) => { // 1 to restore, -1 to debit
-                 for (const item of order.items) {
-                    const productIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
-                    if (productIndex !== -1) {
-                        updatedProducts[productIndex].quantity += item.quantity * multiplier;
+                const adjustStock = (multiplier: 1 | -1) => { // 1 to restore, -1 to debit
+                     for (const item of order.items) {
+                        const productIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
+                        if (productIndex !== -1) {
+                            updatedProducts[productIndex].quantity += item.quantity * multiplier;
+                        }
                     }
                 }
-            }
-            
-            // From Pending to Cancelled -> Restore Stock
-            if (originalStatus === 'Pendente' && newStatus === 'Cancelado') {
-                adjustStock(1);
-            }
-            // From Completed to Pending or Cancelled -> Restore Stock
-            else if (originalStatus === 'Concluído' && (newStatus === 'Pendente' || newStatus === 'Cancelado')) {
-                adjustStock(1);
-            }
-            // From Pending/Cancelled to Completed -> Debit Stock
-            else if ((originalStatus === 'Pendente' || originalStatus === 'Cancelado') && newStatus === 'Concluído') {
-                // Check if there is enough stock before debiting
-                for (const item of order.items) {
-                    const pIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
-                    if (pIndex === -1 || updatedProducts[pIndex].quantity < item.quantity) {
-                        toast({ variant: 'destructive', title: 'Estoque Insuficiente', description: `Não há estoque suficiente para concluir o pedido com o produto "${item.productName}".` });
-                        // To prevent status change, we throw an error to stop the transition
-                        throw new Error('Insufficient stock for completion.');
+                
+                // --- Logic for CANCELLING an order ---
+                // If an order was NOT cancelled and is now being cancelled, RESTORE stock.
+                if (originalStatus !== 'Cancelado' && newStatus === 'Cancelado') {
+                    adjustStock(1);
+                } 
+                // --- Logic for UN-CANCELLING an order ---
+                // If an order WAS cancelled and is now being moved to another state, DEBIT stock.
+                else if (originalStatus === 'Cancelado' && newStatus !== 'Cancelado') {
+                    // Check for sufficient stock before debiting
+                    for (const item of order.items) {
+                        const pIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
+                        if (pIndex === -1 || updatedProducts[pIndex].quantity < item.quantity) {
+                            throw new Error(`Estoque insuficiente para "${item.productName}" ao reverter o cancelamento.`);
+                        }
                     }
+                    adjustStock(-1);
                 }
-                adjustStock(-1);
-            }
+                
+                // No other status changes affect the stock. It's debited on creation, restored on cancellation.
+                
+                return updatedProducts;
+            });
+
+            // --- Update Order Status and Notes ---
+            setOrders(prev => prev.map(o => {
+                if (o.id === orderId) {
+                    const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
+                    return { ...o, status: newStatus, notes: newNotes };
+                }
+                return o;
+            }));
             
-            return updatedProducts;
-        });
-
-        // --- Update Order Status and Notes ---
-        setOrders(prev => prev.map(o => {
-            if (o.id === orderId) {
-                const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
-                return { ...o, status: newStatus, notes: newNotes };
-            }
-            return o;
-        }));
-        
-        toast({
-            title: "Status do Pedido Alterado!",
-            description: `O pedido foi atualizado para "${newStatus}".`,
-        });
-
+            toast({
+                title: "Status do Pedido Alterado!",
+                description: `O pedido foi atualizado para "${newStatus}".`,
+            });
+        } catch (error) {
+             console.error("Failed to change order status:", error);
+             const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
+             toast({
+                variant: "destructive",
+                title: "Erro ao Alterar Status",
+                description: errorMessage,
+            });
+        }
     });
   }
 
