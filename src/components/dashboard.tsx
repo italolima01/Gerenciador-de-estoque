@@ -69,33 +69,38 @@ export function Dashboard() {
   }, []);
   
   const fetchProductAlerts = useCallback(async (productsToFetch: Product[]) => {
-    const completedOrders = orders.filter(o => o.status === 'Concluído');
-    const alertsToUpdate = productsToFetch.map(p => {
-        return getRestockAlert({ product: p, orders: completedOrders });
-    });
+    if (productsToFetch.length === 0) return;
 
-    try {
-        const results = await Promise.all(alertsToUpdate);
-        const newAlerts: Record<string, GenerateRestockAlertOutput> = {};
-        productsToFetch.forEach((p, index) => {
-            newAlerts[p.id] = results[index];
-        });
-        setProductAlerts(prev => ({ ...prev, ...newAlerts }));
-    } catch (error) {
-        console.error("Failed to fetch some restock alerts", error);
-        toast({
-            variant: "destructive",
-            title: "Erro de IA",
-            description: "Não foi possível obter algumas recomendações de estoque.",
-        });
-    }
+    const completedOrders = orders.filter(o => o.status === 'Concluído');
+    
+    startTransition(async () => {
+        const alertsToUpdate = productsToFetch.map(p => getRestockAlert(p, completedOrders));
+        
+        try {
+            const results = await Promise.all(alertsToUpdate);
+            const newAlerts: Record<string, GenerateRestockAlertOutput> = {};
+            productsToFetch.forEach((p, index) => {
+                newAlerts[p.id] = results[index];
+            });
+            setProductAlerts(prev => ({ ...prev, ...newAlerts }));
+        } catch (error) {
+            console.error("Failed to fetch some restock alerts", error);
+            toast({
+                variant: "destructive",
+                title: "Erro de IA",
+                description: "Não foi possível obter algumas recomendações de estoque.",
+            });
+        }
+    });
 }, [orders, toast]);
+
 
 useEffect(() => {
     if (products.length > 0) {
         fetchProductAlerts(products);
     }
-}, [products, fetchProductAlerts]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [products, orders]);
 
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
@@ -589,5 +594,3 @@ useEffect(() => {
     </>
   );
 }
-
-    
