@@ -75,10 +75,9 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
   const expirationDateColor = getExpirationDateColor(product.expirationDate);
   const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
   
-  // Use AI-driven zone if available, otherwise fallback to quantity-based zone
   const quantityZone = getZoneForQuantity(product.quantity);
   const displayZone = isAlertLoading ? quantityZone.zone : product.zone;
-  const displayVariant = isAlertLoading ? quantityZone.variant : zoneTextMap[product.zone] === 'Crítico' ? 'destructive' : zoneTextMap[product.zone] === 'Atenção' ? 'secondary' : 'success';
+  const displayVariant = quantityZone.variant;
 
 
   return (
@@ -93,7 +92,7 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
                  <Skeleton className="h-6 w-20 rounded-full" />
               ) : (
                 <Badge variant={displayVariant} className="capitalize shrink-0">
-                    {zoneTextMap[displayZone]}
+                    {zoneTextMap[quantityZone.zone]}
                 </Badge>
               )}
             </div>
