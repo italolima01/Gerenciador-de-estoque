@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
 import { AddProductDialog } from '@/components/add-product-dialog';
+import { EditProductDialog } from '@/components/edit-product-dialog';
 import { RestockAlertDialog } from '@/components/restock-alert-dialog';
 import { Logo } from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,6 +45,7 @@ export function Dashboard() {
   const [isRegisterOrderSheetOpen, setRegisterOrderSheetOpen] = useState(false);
   const [selectedProductForAlert, setSelectedProductForAlert] = useState<ProductWithStatus | null>(null);
   const [selectedProductForDelete, setSelectedProductForDelete] = useState<Product | null>(null);
+  const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
   const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
@@ -84,6 +86,17 @@ export function Dashboard() {
       toast({
           title: "Produto Adicionado!",
           description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
+      });
+    });
+  };
+
+  const handleEditProduct = (updatedProductData: Product) => {
+    startTransition(() => {
+      setProducts(prev => prev.map(p => p.id === updatedProductData.id ? updatedProductData : p));
+      setSelectedProductForEdit(null);
+       toast({
+          title: "Produto Atualizado!",
+          description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
       });
     });
   };
@@ -386,6 +399,7 @@ export function Dashboard() {
                             key={product.id}
                             product={productWithStatus}
                             onAlertClick={() => setSelectedProductForAlert(productWithStatus)}
+                            onEditClick={() => setSelectedProductForEdit(productWithStatus)}
                             onDeleteClick={() => setSelectedProductForDelete(productWithStatus)}
                             isAlertLoading={!alert}
                         />
@@ -421,6 +435,16 @@ export function Dashboard() {
         onProductAdd={handleAddProduct}
         isPending={isPending}
       />
+
+      {selectedProductForEdit && (
+        <EditProductDialog
+            isOpen={!!selectedProductForEdit}
+            onOpenChange={() => setSelectedProductForEdit(null)}
+            onProductEdit={handleEditProduct}
+            isPending={isPending}
+            product={selectedProductForEdit}
+        />
+       )}
       
       <RegisterOrderSheet
         isOpen={isRegisterOrderSheetOpen}

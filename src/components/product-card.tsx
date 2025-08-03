@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreVertical, Trash2, Loader2 } from 'lucide-react';
+import { MoreVertical, Trash2, Loader2, Edit } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 import type { ProductWithStatus } from '@/lib/types';
@@ -19,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ import { Skeleton } from './ui/skeleton';
 interface ProductCardProps {
   product: ProductWithStatus;
   onAlertClick: () => void;
+  onEditClick: () => void;
   onDeleteClick: () => void;
   isAlertLoading: boolean;
 }
@@ -69,7 +71,7 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
 }
 
 
-export function ProductCard({ product, onAlertClick, onDeleteClick, isAlertLoading }: ProductCardProps) {
+export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick, isAlertLoading }: ProductCardProps) {
   const expirationDateColor = getExpirationDateColor(product.expirationDate);
   const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
   
@@ -116,6 +118,11 @@ export function ProductCard({ product, onAlertClick, onDeleteClick, isAlertLoadi
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+             <DropdownMenuItem onClick={onEditClick}>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>Editar Produto</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
               <Trash2 className="mr-2 h-4 w-4" />
               <span>Excluir Produto</span>
