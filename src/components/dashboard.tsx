@@ -25,7 +25,7 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
-import { DeleteOrderDialog } from './delete-order-dialog';
+import { DeleteOrderDialog } from './cancel-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
@@ -69,8 +69,9 @@ export function Dashboard() {
   }, []);
   
   const fetchProductAlerts = useCallback(async (productsToFetch: Product[]) => {
+    const completedOrders = orders.filter(o => o.status === 'Concluído');
     const alertsToUpdate = productsToFetch.map(p => {
-        return getRestockAlert({ product: p, orders });
+        return getRestockAlert({ product: p, orders: completedOrders });
     });
 
     try {
@@ -82,15 +83,19 @@ export function Dashboard() {
         setProductAlerts(prev => ({ ...prev, ...newAlerts }));
     } catch (error) {
         console.error("Failed to fetch some restock alerts", error);
-        // Optionally show a toast to the user
+        toast({
+            variant: "destructive",
+            title: "Erro de IA",
+            description: "Não foi possível obter algumas recomendações de estoque.",
+        });
     }
-}, [orders]);
+}, [orders, toast]);
 
 useEffect(() => {
     if (products.length > 0) {
         fetchProductAlerts(products);
     }
-}, [products, orders, fetchProductAlerts]);
+}, [products, fetchProductAlerts]);
 
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
@@ -185,11 +190,9 @@ useEffect(() => {
 
         const stockAdjustments: { [productId: string]: number } = {};
         
-        // If the order was NOT 'Pendente', stock was not touched, so we don't need to add it back
-        if(originalOrder.status === 'Pendente') {
-            for (const item of originalOrder.items) {
-                stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
-            }
+        // Add back items from the original order to create a net change
+        for (const item of originalOrder.items) {
+            stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
         }
         
         // Subtract new items from stock
@@ -244,6 +247,7 @@ useEffect(() => {
         }
 
         const productsToUpdate: Product[] = [];
+        // Only return items to stock if the order wasn't completed
         if (orderToDelete.status === 'Pendente') {
             const tempProducts = JSON.parse(JSON.stringify(products));
             for (const item of orderToDelete.items) {
@@ -278,27 +282,33 @@ useEffect(() => {
   
   const handleChangeOrderStatus = (orderId: string, newStatus: Order['status'], note?: string) => {
     startTransition(() => {
-        const order = orders.find(o => o.id === orderId);
-        if (!order) {
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        if (orderIndex === -1) {
             toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
             return;
         }
-
-        const originalStatus = order.status;
+        
+        const originalOrder = orders[orderIndex];
+        const originalStatus = originalOrder.status;
         if (originalStatus === newStatus) return;
 
-        setOrders(prev => prev.map(o => {
-            if (o.id === orderId) {
-                const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
-                return { ...o, status: newStatus, notes: newNotes };
-            }
-            return o;
-        }));
+        const tempOrders = [...orders];
+        const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
+        tempOrders[orderIndex] = { ...originalOrder, status: newStatus, notes: newNotes };
+        setOrders(tempOrders);
         
         toast({
             title: "Status do Pedido Alterado!",
             description: `O pedido foi atualizado para "${newStatus}".`,
         });
+
+        // Trigger alert refresh for the involved products
+        const productsToUpdate = products.filter(p => 
+            originalOrder.items.some(item => item.productId === p.id)
+        );
+        if (productsToUpdate.length > 0) {
+            fetchProductAlerts(productsToUpdate);
+        }
     });
   }
 
@@ -535,7 +545,7 @@ useEffect(() => {
           order={selectedOrderForEdit}
           products={products}
           isOpen={!!selectedOrderForEdit}
-          onOpenchaonOpenChange={() => setSelectedOrderForEdit(null)}
+          onOpenChange={() => setSelectedOrderForEdit(null)}
           onOrderUpdate={handleOrderUpdate}
           isPending={isPending}
         />
@@ -579,3 +589,5 @@ useEffect(() => {
     </>
   );
 }
+
+    
