@@ -115,15 +115,33 @@ export function Dashboard() {
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
-        // 1. Check stock, but don't decrease it yet.
+        const tempProducts = [...products];
+
+        // 1. Check stock and prepare updates
+        const productUpdates = [];
         for (const item of newOrderData.items) {
-          const product = products.find(p => p.id === item.productId);
-          if (!product || product.quantity < item.quantity) {
-             throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product?.quantity ?? 0}`);
+          const productIndex = tempProducts.findIndex(p => p.id === item.productId);
+          if (productIndex === -1 || tempProducts[productIndex].quantity < item.quantity) {
+             throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${tempProducts[productIndex]?.quantity ?? 0}`);
           }
+          const newQuantity = tempProducts[productIndex].quantity - item.quantity;
+          productUpdates.push({ index: productIndex, newQuantity });
+          tempProducts[productIndex].quantity = newQuantity; // Update temp for subsequent checks
         }
 
-        // 2. Create order with 'Pendente' status
+        // 2. All checks passed, now update the actual product state
+        setProducts(currentProducts => {
+            const updatedProducts = [...currentProducts];
+            for (const item of newOrderData.items) {
+                const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+                if (productIndex !== -1) {
+                    updatedProducts[productIndex].quantity -= item.quantity;
+                }
+            }
+            return updatedProducts;
+        });
+        
+        // 3. Create the new order
         const newOrder = { 
           ...newOrderData, 
           id: uuidv4(), 
@@ -135,7 +153,7 @@ export function Dashboard() {
         setRegisterOrderSheetOpen(false);
         toast({
           title: "Pedido Registrado!",
-          description: "O novo pedido foi criado e aguarda conclusão.",
+          description: "O novo pedido foi criado e o estoque foi atualizado.",
         });
       } catch (error) {
         console.error("Failed to register order:", error);
@@ -153,21 +171,58 @@ export function Dashboard() {
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(() => {
       try {
-        // Check stock for the updated items, but don't modify it.
-        for (const item of updatedOrderData.items) {
-          const product = products.find(p => p.id === item.productId);
-           if (!product || product.quantity < item.quantity) {
-             throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${product?.quantity ?? 0}`);
-          }
+        const originalOrder = orders.find(o => o.id === updatedOrderData.id);
+        if (!originalOrder) {
+          throw new Error("Pedido original não encontrado.");
+        }
+
+        const stockAdjustments: { [productId: string]: number } = {};
+
+        // Calculate stock to be returned from the original order
+        for (const item of originalOrder.items) {
+            stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
         }
         
-        // Update the order
+        // Calculate stock to be debited for the updated order
+        for (const item of updatedOrderData.items) {
+            stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) - item.quantity;
+        }
+
+        // Check if there is enough stock for the final changes
+        const tempProducts = [...products];
+        for(const productId in stockAdjustments) {
+            const productIndex = tempProducts.findIndex(p => p.id === productId);
+            if (productIndex === -1) {
+                const productName = updatedOrderData.items.find(i => i.productId === productId)?.productName || 'Produto desconhecido';
+                throw new Error(`Produto ${productName} não encontrado.`);
+            }
+            // The final quantity must be non-negative.
+            if (tempProducts[productIndex].quantity + stockAdjustments[productId] < 0) {
+                 throw new Error(`Estoque insuficiente para ${tempProducts[productIndex].name}.`);
+            }
+            // Update temp for subsequent checks
+            tempProducts[productIndex].quantity += stockAdjustments[productId];
+        }
+
+        // All checks passed, apply the updates
+        setProducts(currentProducts => {
+            const updatedProducts = [...currentProducts];
+            for(const productId in stockAdjustments) {
+                 const productIndex = updatedProducts.findIndex(p => p.id === productId);
+                 if (productIndex !== -1) {
+                    updatedProducts[productIndex].quantity += stockAdjustments[productId];
+                 }
+            }
+            return updatedProducts;
+        });
+
+        // Update the order itself
         setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
         
         setSelectedOrderForEdit(null);
          toast({
           title: "Pedido Atualizado!",
-          description: "As alterações no pedido foram salvas com sucesso.",
+          description: "O pedido foi atualizado e o estoque foi ajustado.",
         });
        } catch (error) {
          console.error("Failed to update order:", error);
@@ -188,16 +243,27 @@ export function Dashboard() {
 
   const handleCancelOrder = (orderToCancel: Order) => {
      startTransition(() => {
-        // Stock is no longer restored here. We just update the status.
+        // Restore stock for cancelled items
+        setProducts(currentProducts => {
+            const updatedProducts = [...currentProducts];
+            for (const item of orderToCancel.items) {
+                const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+                if (productIndex !== -1) {
+                    updatedProducts[productIndex].quantity += item.quantity;
+                }
+            }
+            return updatedProducts;
+        });
+
+        // Update order status
         setOrders(prevOrders => prevOrders.map(o => o.id === orderToCancel.id ? {...o, status: 'Cancelado'} : o));
        
         setSelectedOrderForCancel(null);
 
         toast({
             title: "Pedido Cancelado",
-            description: `O pedido para ${orderToCancel.customerName} foi cancelado com sucesso.`,
+            description: `O pedido para ${orderToCancel.customerName} foi cancelado e os itens retornaram ao estoque.`,
         });
-      
     });
   }
 
@@ -209,53 +275,23 @@ export function Dashboard() {
             return;
         }
 
-        try {
-            // Check stock again at the time of completion
-            for (const item of orderToComplete.items) {
-                const product = products.find(p => p.id === item.productId);
-                if (!product || product.quantity < item.quantity) {
-                    throw new Error(`Estoque insuficiente para ${item.productName} no momento da conclusão.`);
-                }
+        // Just update the status. Stock was already debited at creation.
+        setOrders(prev => prev.map(o => {
+            if (o.id === orderId) {
+            const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
+            return { ...o, status: 'Concluído' as const, notes: note ? newNotes : o.notes };
             }
-
-            // Decrease stock now
-            setProducts(prevProducts => {
-                const updatedProducts = [...prevProducts];
-                for (const item of orderToComplete.items) {
-                    const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
-                    if (productIndex !== -1) {
-                        updatedProducts[productIndex].quantity -= item.quantity;
-                    }
-                }
-                return updatedProducts;
-            });
-
-            // Update order status
-            setOrders(prev => prev.map(o => {
-              if (o.id === orderId) {
-                const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
-                return { ...o, status: 'Concluído' as const, notes: note ? newNotes : o.notes };
-              }
-              return o;
-            }));
+            return o;
+        }));
             
-            setOrderToComplete(null);
-            setConfirmCompleteOpen(false);
-            setAddNoteDialogOpen(false);
-            
-             toast({
-                title: "Pedido Concluído!",
-                description: `O pedido foi finalizado e o estoque foi atualizado.`,
-            });
-        } catch (error) {
-             console.error("Failed to complete order:", error);
-             const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
-             toast({
-                variant: "destructive",
-                title: "Erro ao Concluir Pedido",
-                description: errorMessage,
-            });
-        }
+        setOrderToComplete(null);
+        setConfirmCompleteOpen(false);
+        setAddNoteDialogOpen(false);
+        
+            toast({
+            title: "Pedido Concluído!",
+            description: `O pedido foi finalizado e agora contará nas estatísticas de venda.`,
+        });
       });
   };
   

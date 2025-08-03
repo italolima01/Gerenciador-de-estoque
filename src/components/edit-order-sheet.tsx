@@ -113,9 +113,10 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
 
 
   function getAvailableStock(productId: string): number {
-      const product = products.find(p => p.id === productId);
-      // Since stock is no longer tied to the original order, we just return the current product quantity.
-      return product?.quantity || 0;
+    const product = products.find(p => p.id === productId);
+    const itemInOriginalOrder = order.items.find(item => item.productId === productId);
+    // Available stock is the current quantity in inventory PLUS what was in the original order
+    return (product?.quantity || 0) + (itemInOriginalOrder?.quantity || 0);
   }
 
 
@@ -162,9 +163,12 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   };
 
   const availableProducts = products.filter(p => {
-    const currentItem = watchedItems.find(item => item.productId === p.id);
-    if (currentItem) return true; // Product is already in the order, can be edited
-    return p.quantity > 0; // Product is not in the order, must have stock
+    const isAlreadyInOrder = watchedItems.some(item => item.productId === p.id);
+    if (isAlreadyInOrder) return false; // Don't show products already in the order
+    
+    const originalItem = order.items.find(item => item.productId === p.id);
+    const availableStock = (p.quantity || 0) + (originalItem?.quantity || 0);
+    return availableStock > 0;
   });
 
 
@@ -226,7 +230,6 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                             if(date) field.onChange(date);
                             setCalendarOpen(false);
                             }}
-                            disabled={(date) => date < new Date()}
                             initialFocus
                         />
                         </PopoverContent>
@@ -256,12 +259,10 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                           const selectedProduct = products.find(p => p.id === field.productId);
                           const availableStock = getAvailableStock(field.productId);
                           const price = selectedProduct?.price ?? 0;
-                          const currentQuantity = form.watch(`items.${index}.quantity`) || 0;
-                          const subtotal = price * currentQuantity;
                           
                         return (
-                            <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg bg-muted/50">
-                               <div className="flex-1 grid grid-cols-[1fr_auto] gap-4 items-center">
+                            <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
+                               <div className="flex-1 grid grid-cols-[1fr_auto_auto] gap-4 items-center">
                                   <div>
                                     <p className="font-semibold">{selectedProduct?.name}</p>
                                     <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
@@ -273,16 +274,22 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                     <FormItem className="w-24">
                                         <FormLabel>Qtd.</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} min={1} max={availableStock > 0 ? availableStock : undefined}/>
+                                            <Input 
+                                                type="number" 
+                                                {...field} 
+                                                min={1} 
+                                                max={availableStock > 0 ? availableStock : undefined}
+                                                onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                     )}
                                 />
-                                </div>
                                 <div className="w-32 text-right">
                                     <FormLabel>Subtotal</FormLabel>
-                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
+                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(price * (form.watch(`items.${index}.quantity`) || 0))}</p>
+                                </div>
                                 </div>
                                 <Button
                                 type="button"
