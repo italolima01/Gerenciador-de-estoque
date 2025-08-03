@@ -115,18 +115,17 @@ export function Dashboard() {
   const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
-        const tempProducts = [...products];
+        // Create a temporary copy to perform checks
+        const tempProducts = JSON.parse(JSON.stringify(products));
 
         // 1. Check stock and prepare updates
-        const productUpdates = [];
         for (const item of newOrderData.items) {
-          const productIndex = tempProducts.findIndex(p => p.id === item.productId);
+          const productIndex = tempProducts.findIndex((p: Product) => p.id === item.productId);
           if (productIndex === -1 || tempProducts[productIndex].quantity < item.quantity) {
              throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${tempProducts[productIndex]?.quantity ?? 0}`);
           }
-          const newQuantity = tempProducts[productIndex].quantity - item.quantity;
-          productUpdates.push({ index: productIndex, newQuantity });
-          tempProducts[productIndex].quantity = newQuantity; // Update temp for subsequent checks
+          // Debit from the temporary copy for subsequent checks within the same order
+          tempProducts[productIndex].quantity -= item.quantity;
         }
 
         // 2. All checks passed, now update the actual product state
@@ -167,13 +166,23 @@ export function Dashboard() {
     });
   };
 
-
   const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(() => {
       try {
         const originalOrder = orders.find(o => o.id === updatedOrderData.id);
         if (!originalOrder) {
           throw new Error("Pedido original não encontrado.");
+        }
+
+        // Do not adjust stock for orders that are not pending
+        if (originalOrder.status !== 'Pendente') {
+            setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
+            setSelectedOrderForEdit(null);
+            toast({
+              title: "Pedido Atualizado!",
+              description: "Os detalhes do pedido foram atualizados. O estoque não foi alterado pois o pedido não está pendente.",
+            });
+            return;
         }
 
         const stockAdjustments: { [productId: string]: number } = {};
@@ -188,15 +197,16 @@ export function Dashboard() {
             stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) - item.quantity;
         }
 
-        // Check if there is enough stock for the final changes
-        const tempProducts = [...products];
+        // Create a temporary copy to check if there is enough stock for the final changes
+        const tempProducts = JSON.parse(JSON.stringify(products));
         for(const productId in stockAdjustments) {
-            const productIndex = tempProducts.findIndex(p => p.id === productId);
+            const productIndex = tempProducts.findIndex((p: Product) => p.id === productId);
             if (productIndex === -1) {
+                // This case should ideally not happen if products are managed correctly
                 const productName = updatedOrderData.items.find(i => i.productId === productId)?.productName || 'Produto desconhecido';
-                throw new Error(`Produto ${productName} não encontrado.`);
+                throw new Error(`Produto ${productName} não encontrado no inventário.`);
             }
-            // The final quantity must be non-negative.
+            // Check if the final quantity would be negative
             if (tempProducts[productIndex].quantity + stockAdjustments[productId] < 0) {
                  throw new Error(`Estoque insuficiente para ${tempProducts[productIndex].name}.`);
             }
@@ -240,61 +250,82 @@ export function Dashboard() {
     setOrderToComplete(order);
     setConfirmCompleteOpen(true);
   }
-
-  const handleCancelOrder = (orderToCancel: Order) => {
-     startTransition(() => {
-        // Restore stock for cancelled items
-        setProducts(currentProducts => {
-            const updatedProducts = [...currentProducts];
-            for (const item of orderToCancel.items) {
-                const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    updatedProducts[productIndex].quantity += item.quantity;
-                }
-            }
-            return updatedProducts;
-        });
-
-        // Update order status
-        setOrders(prevOrders => prevOrders.map(o => o.id === orderToCancel.id ? {...o, status: 'Cancelado'} : o));
-       
-        setSelectedOrderForCancel(null);
-
-        toast({
-            title: "Pedido Cancelado",
-            description: `O pedido para ${orderToCancel.customerName} foi cancelado e os itens retornaram ao estoque.`,
-        });
-    });
-  }
-
-  const handleCompleteOrder = (orderId: string, note?: string) => {
-      startTransition(() => {
-        const orderToComplete = orders.find(o => o.id === orderId);
-        if (!orderToComplete) {
+  
+  const handleChangeOrderStatus = (orderId: string, newStatus: Order['status'], note?: string) => {
+    startTransition(() => {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) {
             toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
             return;
         }
 
-        // Just update the status. Stock was already debited at creation.
+        const originalStatus = order.status;
+
+        // --- Stock Adjustment Logic ---
+        // Debited on Pending -> Completed
+        // Restored on Completed -> Pending/Cancelled
+        // Restored on Pending -> Cancelled
+        setProducts(currentProducts => {
+            const updatedProducts = JSON.parse(JSON.stringify(currentProducts));
+
+            const adjustStock = (multiplier: 1 | -1) => { // 1 to restore, -1 to debit
+                 for (const item of order.items) {
+                    const productIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
+                    if (productIndex !== -1) {
+                        updatedProducts[productIndex].quantity += item.quantity * multiplier;
+                    }
+                }
+            }
+            
+            // From Pending to Cancelled -> Restore Stock
+            if (originalStatus === 'Pendente' && newStatus === 'Cancelado') {
+                adjustStock(1);
+            }
+            // From Completed to Pending or Cancelled -> Restore Stock
+            else if (originalStatus === 'Concluído' && (newStatus === 'Pendente' || newStatus === 'Cancelado')) {
+                adjustStock(1);
+            }
+            // From Pending/Cancelled to Completed -> Debit Stock
+            else if ((originalStatus === 'Pendente' || originalStatus === 'Cancelado') && newStatus === 'Concluído') {
+                // Check if there is enough stock before debiting
+                for (const item of order.items) {
+                    const pIndex = updatedProducts.findIndex((p: Product) => p.id === item.productId);
+                    if (pIndex === -1 || updatedProducts[pIndex].quantity < item.quantity) {
+                        toast({ variant: 'destructive', title: 'Estoque Insuficiente', description: `Não há estoque suficiente para concluir o pedido com o produto "${item.productName}".` });
+                        // To prevent status change, we throw an error to stop the transition
+                        throw new Error('Insufficient stock for completion.');
+                    }
+                }
+                adjustStock(-1);
+            }
+            
+            return updatedProducts;
+        });
+
+        // --- Update Order Status and Notes ---
         setOrders(prev => prev.map(o => {
             if (o.id === orderId) {
-            const newNotes = o.notes ? `${o.notes}\\n---\\n${note}` : note;
-            return { ...o, status: 'Concluído' as const, notes: note ? newNotes : o.notes };
+                const newNotes = note ? (o.notes ? `${o.notes}\n---\n${note}` : note) : o.notes;
+                return { ...o, status: newStatus, notes: newNotes };
             }
             return o;
         }));
-            
-        setOrderToComplete(null);
-        setConfirmCompleteOpen(false);
-        setAddNoteDialogOpen(false);
         
-            toast({
-            title: "Pedido Concluído!",
-            description: `O pedido foi finalizado e agora contará nas estatísticas de venda.`,
+        toast({
+            title: "Status do Pedido Alterado!",
+            description: `O pedido foi atualizado para "${newStatus}".`,
         });
-      });
-  };
-  
+
+    });
+  }
+
+  const handleCompleteOrderWithNote = (orderId: string, note?: string) => {
+    handleChangeOrderStatus(orderId, 'Concluído', note);
+    setOrderToComplete(null);
+    setConfirmCompleteOpen(false);
+    setAddNoteDialogOpen(false);
+  }
+
   const filteredProducts = useMemo(() => {
     if (!searchQuery) {
       return products;
@@ -440,7 +471,7 @@ export function Dashboard() {
                     isLoading={isLoading}
                     onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                     onOrderEdit={setSelectedOrderForEdit}
-                    onOrderCancel={setSelectedOrderForCancel}
+                    onOrderStatusChange={handleChangeOrderStatus}
                     onMarkAsComplete={handleOpenCompleteDialog}
                 />
               </CardContent>
@@ -517,7 +548,10 @@ export function Dashboard() {
           order={selectedOrderForCancel}
           isOpen={!!selectedOrderForCancel}
           onOpenChange={() => setSelectedOrderForCancel(null)}
-          onConfirm={() => handleCancelOrder(selectedOrderForCancel)}
+          onConfirm={() => {
+            handleChangeOrderStatus(selectedOrderForCancel.id, 'Cancelado')
+            setSelectedOrderForCancel(null)
+          }}
           isPending={isPending}
         />
       )}
@@ -526,7 +560,7 @@ export function Dashboard() {
         <ConfirmCompletionDialog
             isOpen={isConfirmCompleteOpen}
             onOpenChange={setConfirmCompleteOpen}
-            onConfirmWithoutNote={() => handleCompleteOrder(orderToComplete.id)}
+            onConfirmWithoutNote={() => handleCompleteOrderWithNote(orderToComplete.id)}
             onConfirmWithNote={() => {
                 setConfirmCompleteOpen(false);
                 setAddNoteDialogOpen(true);
@@ -543,7 +577,7 @@ export function Dashboard() {
                 }
                 setAddNoteDialogOpen(isOpen);
             }}
-            onSave={(note) => handleCompleteOrder(orderToComplete.id, note)}
+            onSave={(note) => handleCompleteOrderWithNote(orderToComplete.id, note)}
             isPending={isPending}
         />
       )}

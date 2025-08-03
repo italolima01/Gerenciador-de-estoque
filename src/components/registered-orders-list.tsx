@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle } from 'lucide-react';
+import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 
@@ -28,7 +28,7 @@ interface RegisteredOrdersListProps {
   isLoading: boolean;
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
-  onOrderCancel: (order: Order) => void;
+  onOrderStatusChange: (orderId: string, status: Order['status']) => void;
   onMarkAsComplete: (order: Order) => void;
 }
 
@@ -38,7 +38,7 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Cancelado: 'destructive',
 };
 
-export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrderEdit, onOrderCancel, onMarkAsComplete }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrderEdit, onOrderStatusChange, onMarkAsComplete }: RegisteredOrdersListProps) {
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -109,25 +109,33 @@ export function RegisteredOrdersList({ orders, isLoading, onOrderSelect, onOrder
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderEdit(order)}}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+
                     {order.status === 'Pendente' && (
                         <>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkAsComplete(order); }}>
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Marcar como Concluído
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                                onClick={(e) => { e.stopPropagation(); onOrderCancel(order)}} 
+                             <DropdownMenuItem 
+                                onClick={(e) => { e.stopPropagation(); onOrderStatusChange(order.id, 'Cancelado')}} 
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                             >
                                 <XCircle className="mr-2 h-4 w-4" />
                                 Cancelar Pedido
                             </DropdownMenuItem>
                         </>
+                    )}
+
+                    {(order.status === 'Concluído' || order.status === 'Cancelado') && (
+                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOrderStatusChange(order.id, 'Pendente')}}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Reverter para Pendente
+                        </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
