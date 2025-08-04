@@ -65,8 +65,8 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
                 return total + (product?.price || 0) * item.quantity;
             }, 0);
         };
-
-        const today = toZonedTime(new Date(), timeZone);
+        
+        const todayZoned = toZonedTime(new Date(), timeZone);
 
         // --- Weekly Data ---
         const weeklySalesMap = new Map<string, number>();
@@ -79,7 +79,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
         const weeklyChartData = [];
         for (let i = 6; i >= 0; i--) {
-            const date = subDays(today, i);
+            const date = subDays(todayZoned, i);
             const dateKey = format(date, 'yyyy-MM-dd', { timeZone });
             const label = format(date, 'dd/MM', { timeZone });
             weeklyChartData.push({
@@ -100,9 +100,9 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
         const monthlyChartData = [];
         for (let i = 11; i >= 0; i--) {
-            const date = subMonths(today, i);
+            const date = subMonths(todayZoned, i);
             const monthKey = format(date, 'yyyy-MM', { timeZone });
-            const label = format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
+            const label = format(date, 'MMMM', { locale: ptBR, timeZone }).replace(/^\w/, (c) => c.toUpperCase());
              monthlyChartData.push({
                 month: label,
                 total: monthlySalesMap.get(monthKey) || 0
