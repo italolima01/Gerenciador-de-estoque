@@ -32,6 +32,7 @@ import { RegisterOrderSheet } from './register-order-sheet';
 import { SalesDashboard } from './sales-dashboard';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { ProductFilters } from './product-filters';
+import { ProductSort, type SortOption, type SortDirection } from './product-sort';
 
 
 function removeAccents(str: string) {
@@ -57,8 +58,8 @@ export function Dashboard() {
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [quantityFilter, setQuantityFilter] = useState('all');
-  const [expirationFilter, setExpirationFilter] = useState('all');
+  const [sortOption, setSortOption] = useState<SortOption>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState('inventory');
@@ -341,42 +342,50 @@ useEffect(() => {
   };
 
 
-  const filteredProducts = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const processedProducts = useMemo(() => {
+    let filtered = products;
 
-    return products.filter(product => {
-      // Name filter
-      const nameMatch = searchQuery ? removeAccents(product.name.toLowerCase()).includes(removeAccents(searchQuery.toLowerCase())) : true;
+    // Name filter
+    if (searchQuery) {
+        filtered = filtered.filter(product =>
+        removeAccents(product.name.toLowerCase()).includes(removeAccents(searchQuery.toLowerCase()))
+      );
+    }
+    
+    // Sorting
+    const sorted = [...filtered].sort((a, b) => {
+        let compareA: string | number;
+        let compareB: string | number;
 
-      // Quantity filter
-      const quantityMatch = (() => {
-        switch (quantityFilter) {
-          case 'low': return product.quantity <= 20;
-          case 'medium': return product.quantity > 20 && product.quantity <= 50;
-          case 'high': return product.quantity > 50;
-          case 'all':
-          default: return true;
+        switch (sortOption) {
+            case 'name':
+                compareA = a.name.toLowerCase();
+                compareB = b.name.toLowerCase();
+                break;
+            case 'quantity':
+                compareA = a.quantity;
+                compareB = b.quantity;
+                break;
+            case 'expirationDate':
+                compareA = a.expirationDate;
+                compareB = b.expirationDate;
+                break;
+            default:
+                return 0;
         }
-      })();
 
-      // Expiration filter
-      const expirationMatch = (() => {
-        const expiryDate = parseISO(product.expirationDate);
-        const daysLeft = differenceInDays(expiryDate, today);
-
-        switch (expirationFilter) {
-          case 'expired': return daysLeft < 0;
-          case '7days': return daysLeft >= 0 && daysLeft <= 7;
-          case '30days': return daysLeft > 7 && daysLeft <= 30;
-          case 'all':
-          default: return true;
+        if (compareA < compareB) {
+            return sortDirection === 'asc' ? -1 : 1;
         }
-      })();
-
-      return nameMatch && quantityMatch && expirationMatch;
+        if (compareA > compareB) {
+            return sortDirection === 'asc' ? 1 : -1;
+        }
+        return 0;
     });
-  }, [products, searchQuery, quantityFilter, expirationFilter]);
+
+    return sorted;
+
+  }, [products, searchQuery, sortOption, sortDirection]);
 
 
   const headerButton = useMemo(() => {
@@ -455,14 +464,18 @@ useEffect(() => {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
                 <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
             </div>
-            <ProductFilters
-              searchQuery={searchQuery}
-              onSearchQueryChange={setSearchQuery}
-              quantityFilter={quantityFilter}
-              onQuantityFilterChange={setQuantityFilter}
-              expirationFilter={expirationFilter}
-              onExpirationFilterChange={setExpirationFilter}
-            />
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <ProductFilters
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+                />
+                <ProductSort
+                sortOption={sortOption}
+                onSortOptionChange={setSortOption}
+                sortDirection={sortDirection}
+                onSortDirectionChange={setSortDirection}
+                />
+            </div>
             {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
@@ -477,7 +490,7 @@ useEffect(() => {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredProducts.map((product) => {
+                {processedProducts.map((product) => {
                     const alert = productAlerts[product.id];
                     const productWithStatus: ProductWithStatus = {
                         ...product,
@@ -498,7 +511,7 @@ useEffect(() => {
                 })}
               </div>
             )}
-            {!isLoading && filteredProducts.length === 0 && (
+            {!isLoading && processedProducts.length === 0 && (
                 <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center mt-6">
                     <h3 className="text-xl font-semibold tracking-tight text-muted-foreground">Nenhum Produto Encontrado</h3>
                     <p className="mt-2 text-sm text-muted-foreground">
