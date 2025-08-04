@@ -11,7 +11,7 @@ import {
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import type { ProductWithStatus } from '@/lib/types';
 import { CheckCircle, AlertTriangle, XCircle, BarChart, CalendarClock } from 'lucide-react';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format } from 'date-fns';
 
 interface RestockAlertDialogProps {
   product: ProductWithStatus;
@@ -49,9 +49,10 @@ export function RestockAlertDialog({ product, isOpen, onOpenChange }: RestockAle
     today.setHours(0, 0, 0, 0);
     const expiry = parseISO(product.expirationDate);
     const daysUntilExpiration = differenceInDays(expiry, today);
+    const formattedDate = format(expiry, 'dd/MM/yyyy');
 
     const expirationMessage = daysUntilExpiration < 0
-      ? 'Este produto já venceu.'
+      ? `Este produto venceu em ${formattedDate}.`
       : daysUntilExpiration === 0
       ? 'Este produto vence hoje.'
       : `Faltam ${daysUntilExpiration} dias para o vencimento.`;
