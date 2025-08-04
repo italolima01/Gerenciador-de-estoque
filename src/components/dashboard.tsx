@@ -6,7 +6,6 @@ import { PlusCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
-import { differenceInDays, parseISO } from 'date-fns';
 
 import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
 import { products as initialProducts, orders as initialOrders } from '@/lib/data';
@@ -74,7 +73,7 @@ export function Dashboard() {
     return () => clearTimeout(timer);
   }, []);
   
-  const fetchProductAlerts = useCallback(async (productsToFetch: Product[]) => {
+ const fetchProductAlerts = useCallback((productsToFetch: Product[]) => {
     if (productsToFetch.length === 0) return;
 
     const completedOrders = orders.filter(o => o.status === 'Concluído');
@@ -98,18 +97,19 @@ export function Dashboard() {
             });
         }
     });
-}, [orders, toast]);
+}, [orders, toast, startTransition]);
 
 
-useEffect(() => {
-    if (products.length > 0) {
-        fetchProductAlerts(products);
+  useEffect(() => {
+    if (products.length > 0 && !isLoading) {
+      fetchProductAlerts(products);
     }
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [products, orders]);
+    // We only want to run this on initial load or when the base products/orders change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]); // Depend on isLoading to run once after initial data is "loaded"
 
 
-  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
+  const handleAddProduct = useCallback((newProductData: Omit<Product, 'id'>) => {
     startTransition(() => {
       const newProduct = { ...newProductData, id: uuidv4() };
       const updatedProducts = [newProduct, ...products];
@@ -121,9 +121,9 @@ useEffect(() => {
           description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
       });
     });
-  };
+  }, [products, setProducts, fetchProductAlerts, toast]);
 
-  const handleEditProduct = (updatedProductData: Product) => {
+  const handleEditProduct = useCallback((updatedProductData: Product) => {
     startTransition(() => {
       const updatedProducts = products.map(p => p.id === updatedProductData.id ? updatedProductData : p)
       setProducts(updatedProducts);
@@ -134,20 +134,25 @@ useEffect(() => {
           description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
       });
     });
-  };
+  }, [products, setProducts, fetchProductAlerts, toast]);
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = useCallback((productId: string) => {
     startTransition(() => {
       setProducts(prev => prev.filter(p => p.id !== productId));
+      setProductAlerts(prev => {
+        const newAlerts = { ...prev };
+        delete newAlerts[productId];
+        return newAlerts;
+      });
       setSelectedProductForDelete(null);
       toast({
           title: "Produto Excluído",
           description: "O produto foi removido do seu inventário.",
       });
     });
-  };
+  }, [setProducts, setProductAlerts, toast]);
   
-  const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+  const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
         const productsToUpdate: Product[] = [];
@@ -189,9 +194,9 @@ useEffect(() => {
         });
       }
     });
-  };
+  }, [products, setProducts, setOrders, fetchProductAlerts, toast]);
 
-  const handleOrderUpdate = (updatedOrderData: Order) => {
+  const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
     startTransition(() => {
       try {
         const originalOrder = orders.find(o => o.id === updatedOrderData.id);
@@ -247,9 +252,9 @@ useEffect(() => {
         });
       }
     });
-  }
+  }, [products, orders, setProducts, setOrders, fetchProductAlerts, toast]);
 
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = useCallback((orderId: string) => {
     startTransition(() => {
         const orderToDelete = orders.find(o => o.id === orderId);
         if (!orderToDelete) {
@@ -284,14 +289,14 @@ useEffect(() => {
             description: "O pedido foi removido e os itens retornaram ao estoque.",
         });
     });
-  }
+  }, [orders, products, setOrders, setProducts, fetchProductAlerts, toast]);
   
-  const handleOpenCompleteDialog = (order: Order) => {
+  const handleOpenCompleteDialog = useCallback((order: Order) => {
     setOrderToComplete(order);
     setConfirmCompleteOpen(true);
-  }
+  }, []);
   
-  const handleChangeOrderStatus = (orderId: string, newStatus: Order['status'], note?: string) => {
+  const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
     startTransition(() => {
       setOrders(prevOrders => {
         const orderIndex = prevOrders.findIndex(o => o.id === orderId);
@@ -308,10 +313,8 @@ useEffect(() => {
         const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
         tempOrders[orderIndex] = { ...originalOrder, status: newStatus, notes: newNotes };
         
-        toast({
-            title: "Status do Pedido Alterado!",
-            description: `O pedido foi atualizado para "${newStatus}".`,
-        });
+        // Do not toast here as it can cause render loops if this function is called from useEffect
+        // Toasting should happen in the event handler that calls this.
 
         // Trigger alert refresh for the involved products
         const productsToUpdate = products.filter(p => 
@@ -324,23 +327,31 @@ useEffect(() => {
         return tempOrders;
       });
     });
-  }
+  }, [products, setOrders, fetchProductAlerts, toast]);
 
-  const handleCompleteOrderWithNote = (note: string) => {
+  const handleCompleteOrderWithNote = useCallback((note: string) => {
     if (!orderToComplete) return;
     handleChangeOrderStatus(orderToComplete.id, 'Concluído', note);
     setOrderToComplete(null);
     setAddNoteDialogOpen(false);
-  };
+    toast({
+        title: "Status do Pedido Alterado!",
+        description: `O pedido foi atualizado para "Concluído".`,
+    });
+  }, [orderToComplete, handleChangeOrderStatus, toast]);
   
-  const handleCompleteOrderWithoutNote = () => {
+  const handleCompleteOrderWithoutNote = useCallback(() => {
       if (!orderToComplete) return;
       handleChangeOrderStatus(orderToComplete.id, 'Concluído');
       setOrderToComplete(null);
       setConfirmCompleteOpen(false);
-  }
+      toast({
+          title: "Status do Pedido Alterado!",
+          description: `O pedido foi atualizado para "Concluído".`,
+      });
+  }, [orderToComplete, handleChangeOrderStatus, toast]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const {active, over} = event;
     if (active.id !== over?.id) {
       setOrders((items) => {
@@ -349,7 +360,7 @@ useEffect(() => {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  };
+  }, [setOrders]);
 
 
   const processedProducts = useMemo(() => {
@@ -506,7 +517,7 @@ useEffect(() => {
                             onAlertClick={() => setSelectedProductForAlert(productWithStatus)}
                             onEditClick={() => setSelectedProductForEdit(productWithStatus)}
                             onDeleteClick={() => setSelectedProductForDelete(productWithStatus)}
-                            isAlertLoading={!alert}
+                            isAlertLoading={isPending && !alert}
                         />
                     );
                 })}
@@ -647,3 +658,5 @@ useEffect(() => {
     </>
   );
 }
+
+    
