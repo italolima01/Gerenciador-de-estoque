@@ -293,20 +293,20 @@ useEffect(() => {
   
   const handleChangeOrderStatus = (orderId: string, newStatus: Order['status'], note?: string) => {
     startTransition(() => {
-        const orderIndex = orders.findIndex(o => o.id === orderId);
+      setOrders(prevOrders => {
+        const orderIndex = prevOrders.findIndex(o => o.id === orderId);
         if (orderIndex === -1) {
-            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-            return;
+          toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+          return prevOrders;
         }
         
-        const originalOrder = orders[orderIndex];
+        const originalOrder = prevOrders[orderIndex];
         const originalStatus = originalOrder.status;
-        if (originalStatus === newStatus) return;
+        if (originalStatus === newStatus && !note) return prevOrders;
 
-        const tempOrders = [...orders];
+        const tempOrders = [...prevOrders];
         const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
         tempOrders[orderIndex] = { ...originalOrder, status: newStatus, notes: newNotes };
-        setOrders(tempOrders);
         
         toast({
             title: "Status do Pedido Alterado!",
@@ -320,14 +320,24 @@ useEffect(() => {
         if (productsToUpdate.length > 0) {
             fetchProductAlerts(productsToUpdate);
         }
+
+        return tempOrders;
+      });
     });
   }
 
-  const handleCompleteOrderWithNote = (orderId: string, note?: string) => {
-    handleChangeOrderStatus(orderId, 'Concluído', note);
+  const handleCompleteOrderWithNote = (note: string) => {
+    if (!orderToComplete) return;
+    handleChangeOrderStatus(orderToComplete.id, 'Concluído', note);
     setOrderToComplete(null);
-    setConfirmCompleteOpen(false);
     setAddNoteDialogOpen(false);
+  };
+  
+  const handleCompleteOrderWithoutNote = () => {
+      if (!orderToComplete) return;
+      handleChangeOrderStatus(orderToComplete.id, 'Concluído');
+      setOrderToComplete(null);
+      setConfirmCompleteOpen(false);
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -613,7 +623,7 @@ useEffect(() => {
         <ConfirmCompletionDialog
             isOpen={isConfirmCompleteOpen}
             onOpenChange={setConfirmCompleteOpen}
-            onConfirmWithoutNote={() => handleCompleteOrderWithNote(orderToComplete.id)}
+            onConfirmWithoutNote={handleCompleteOrderWithoutNote}
             onConfirmWithNote={() => {
                 setConfirmCompleteOpen(false);
                 setAddNoteDialogOpen(true);
@@ -630,12 +640,10 @@ useEffect(() => {
                 }
                 setAddNoteDialogOpen(isOpen);
             }}
-            onSave={(note) => handleCompleteOrderWithNote(orderToComplete.id, note)}
+            onSave={handleCompleteOrderWithNote}
             isPending={isPending}
         />
       )}
     </>
   );
 }
-
-    
