@@ -25,7 +25,7 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
-import { DeleteOrderDialog } from './cancel-order-dialog';
+import { DeleteOrderDialog as CancelOrderDialog } from './cancel-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
@@ -354,33 +354,24 @@ useEffect(() => {
     
     // Sorting
     const sorted = [...filtered].sort((a, b) => {
-        let compareA: string | number;
-        let compareB: string | number;
+      let compareResult = 0;
 
-        switch (sortOption) {
-            case 'name':
-                compareA = a.name.toLowerCase();
-                compareB = b.name.toLowerCase();
-                break;
-            case 'quantity':
-                compareA = a.quantity;
-                compareB = b.quantity;
-                break;
-            case 'expirationDate':
-                compareA = a.expirationDate;
-                compareB = b.expirationDate;
-                break;
-            default:
-                return 0;
-        }
+      switch (sortOption) {
+        case 'name':
+          // Use localeCompare for proper alphabetical sorting of accented characters
+          compareResult = a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+          break;
+        case 'quantity':
+          compareResult = a.quantity - b.quantity;
+          break;
+        case 'expirationDate':
+          compareResult = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
+          break;
+        default:
+          return 0;
+      }
 
-        if (compareA < compareB) {
-            return sortDirection === 'asc' ? -1 : 1;
-        }
-        if (compareA > compareB) {
-            return sortDirection === 'asc' ? 1 : -1;
-        }
-        return 0;
+      return sortDirection === 'asc' ? compareResult : -compareResult;
     });
 
     return sorted;
@@ -609,7 +600,7 @@ useEffect(() => {
       )}
 
       {selectedOrderForDelete && (
-        <DeleteOrderDialog
+        <CancelOrderDialog
           order={selectedOrderForDelete}
           isOpen={!!selectedOrderForDelete}
           onOpenChange={() => setSelectedOrderForDelete(null)}
