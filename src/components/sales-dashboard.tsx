@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -30,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col space-y-1">
                 <span className="text-[0.70rem] uppercase text-muted-foreground">
-                Mês/Dia
+                Data
                 </span>
                 <span className="font-bold text-muted-foreground">
                 {label}
@@ -65,42 +64,41 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
                 return total + (product?.price || 0) * item.quantity;
             }, 0);
         };
-        
-        const todayZoned = toZonedTime(new Date(), timeZone);
 
+        const todayInTimeZone = toZonedTime(new Date(), timeZone);
+        
         // --- Weekly Data ---
-        const weeklySalesMap = new Map<string, number>();
+        const weeklySalesMap = new Map<string, number>(); // Key: 'YYYY-MM-DD', Value: total sales
         for (const order of completedOrders) {
-            const orderDate = toZonedTime(parseISO(order.createdAt), timeZone);
-            const dateKey = format(orderDate, 'yyyy-MM-dd', { timeZone });
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            const dateKey = format(orderDateZoned, 'yyyy-MM-dd', { timeZone });
             const currentTotal = weeklySalesMap.get(dateKey) || 0;
             weeklySalesMap.set(dateKey, currentTotal + calculateTotalValue(order));
         }
 
         const weeklyChartData = [];
         for (let i = 6; i >= 0; i--) {
-            const date = subDays(todayZoned, i);
+            const date = subDays(todayInTimeZone, i);
             const dateKey = format(date, 'yyyy-MM-dd', { timeZone });
-            const label = format(date, 'dd/MM', { timeZone });
+            const label = format(date, 'dd/MM', { timeZone, locale: ptBR });
             weeklyChartData.push({
                 date: label,
                 total: weeklySalesMap.get(dateKey) || 0
             });
         }
 
-
         // --- Monthly Data ---
-        const monthlySalesMap = new Map<string, number>();
+        const monthlySalesMap = new Map<string, number>(); // Key: 'YYYY-MM', Value: total sales
          for (const order of completedOrders) {
-            const orderDate = toZonedTime(parseISO(order.createdAt), timeZone);
-            const monthKey = format(orderDate, 'yyyy-MM', { timeZone });
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            const monthKey = format(orderDateZoned, 'yyyy-MM', { timeZone });
             const currentTotal = monthlySalesMap.get(monthKey) || 0;
             monthlySalesMap.set(monthKey, currentTotal + calculateTotalValue(order));
         }
 
         const monthlyChartData = [];
         for (let i = 11; i >= 0; i--) {
-            const date = subMonths(todayZoned, i);
+            const date = subMonths(todayInTimeZone, i);
             const monthKey = format(date, 'yyyy-MM', { timeZone });
             const label = format(date, 'MMMM', { locale: ptBR, timeZone }).replace(/^\w/, (c) => c.toUpperCase());
              monthlyChartData.push({
