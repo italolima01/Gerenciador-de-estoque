@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { subDays, parseISO, subMonths } from 'date-fns';
+import { subDays, parseISO, subMonths, startOfDay } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
@@ -30,7 +30,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col space-y-1">
                 <span className="text-[0.70rem] uppercase text-muted-foreground">
-                Mês
+                Mês/Dia
                 </span>
                 <span className="font-bold text-muted-foreground">
                 {label}
@@ -66,21 +66,24 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }, 0);
         };
 
-        const today = toZonedTime(new Date(), timeZone);
+        const todayZoned = toZonedTime(new Date(), timeZone);
         
         // Weekly Data (last 7 days)
         const weeklySales: { [key: string]: number } = {};
+        const last7Days: string[] = [];
         for (let i = 6; i >= 0; i--) {
-            const date = subDays(today, i);
+            const date = subDays(todayZoned, i);
             const formattedDate = format(date, 'dd/MM', { timeZone });
             weeklySales[formattedDate] = 0;
+            last7Days.push(formattedDate);
         }
 
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
             
-            if (orderDateZoned >= subDays(today, 7)) {
+            // Compare only dates, ignoring time
+            if (orderDateZoned >= subDays(startOfDay(todayZoned), 6)) {
                 const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone });
                 if (weeklySales[formattedDate] !== undefined) {
                     weeklySales[formattedDate] += calculateTotalValue(order);
@@ -88,7 +91,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }
         });
         
-        const weeklyChartData = Object.keys(weeklySales).map(date => ({
+        const weeklyChartData = last7Days.map(date => ({
             date,
             total: weeklySales[date]
         }));
@@ -96,18 +99,20 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
         // Monthly Data (last 12 months)
         const monthlySales: { [key: string]: number } = {};
+        const last12Months: string[] = [];
         for (let i = 11; i >= 0; i--) {
-            const date = subMonths(today, i);
+            const date = subMonths(todayZoned, i);
             const formattedMonth = format(date, 'MMMM', { locale: ptBR, timeZone });
             const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
             monthlySales[capitalizedMonth] = 0;
+            last12Months.push(capitalizedMonth);
         }
 
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
-
-            if (orderDateZoned >= subMonths(today, 12)) {
+            
+            if (orderDateZoned >= subMonths(startOfDay(todayZoned), 11)) {
                 const formattedMonth = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
                 const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
                  if (monthlySales[capitalizedMonth] !== undefined) {
@@ -116,7 +121,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }
         });
 
-        const monthlyChartData = Object.keys(monthlySales).map(month => ({
+        const monthlyChartData = last12Months.map(month => ({
             month,
             total: monthlySales[month]
         }));
