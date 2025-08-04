@@ -116,10 +116,12 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
             </div>
 
             {order.notes && (
-                 <div className="flex items-start gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground mt-1" />
-                    <div>
-                        <p className="font-semibold text-foreground">Anotações</p>
+                 <div className="space-y-2">
+                    <h4 className="font-semibold flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        Anotações
+                    </h4>
+                    <div className="rounded-lg border bg-muted/20 p-4">
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
                     </div>
                 </div>

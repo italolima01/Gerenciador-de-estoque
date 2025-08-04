@@ -91,11 +91,12 @@ export function Dashboard() {
             setProductAlerts(prev => ({ ...prev, ...newAlerts }));
         } catch (error) {
             console.error("Failed to fetch some restock alerts", error);
-            toast({
-                variant: "destructive",
-                title: "Erro de IA",
-                description: "Não foi possível obter algumas recomendações de estoque.",
-            });
+            // This toast is problematic in some race conditions.
+            // toast({
+            //     variant: "destructive",
+            //     title: "Erro de IA",
+            //     description: "Não foi possível obter algumas recomendações de estoque.",
+            // });
         }
     });
 }, [orders, toast]);
@@ -106,7 +107,8 @@ export function Dashboard() {
     if (products.length > 0 && !isLoading) {
       fetchProductAlerts(products);
     }
-  }, [products, isLoading, fetchProductAlerts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, isLoading]);
 
   // Fetch alerts for specific products when they need a refresh
   useEffect(() => {
@@ -161,6 +163,7 @@ export function Dashboard() {
   }, [setProducts, setProductAlerts, toast]);
   
   const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+    let success = false;
     startTransition(() => {
       try {
         const productsToUpdate: Product[] = [];
@@ -188,10 +191,7 @@ export function Dashboard() {
         setProductsToRefresh(productsToUpdate);
 
         setRegisterOrderSheetOpen(false);
-        toast({
-          title: "Pedido Registrado!",
-          description: "O novo pedido foi criado e o estoque foi atualizado.",
-        });
+        success = true;
       } catch (error) {
         console.error("Failed to register order:", error);
         const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
@@ -202,9 +202,17 @@ export function Dashboard() {
         });
       }
     });
+
+    if (success) {
+        toast({
+          title: "Pedido Registrado!",
+          description: "O novo pedido foi criado e o estoque foi atualizado.",
+        });
+    }
   }, [products, setProducts, setOrders, toast]);
 
   const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
+    let success = false;
     startTransition(() => {
       try {
         const originalOrder = orders.find(o => o.id === updatedOrderData.id);
@@ -246,10 +254,7 @@ export function Dashboard() {
         setProductsToRefresh(productsToUpdate);
 
         setSelectedOrderForEdit(null);
-         toast({
-          title: "Pedido Atualizado!",
-          description: "O pedido foi atualizado e o estoque foi ajustado.",
-        });
+        success = true;
        } catch (error) {
          console.error("Failed to update order:", error);
          const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
@@ -260,15 +265,20 @@ export function Dashboard() {
         });
       }
     });
+
+    if (success) {
+      toast({
+        title: "Pedido Atualizado!",
+        description: "O pedido foi atualizado e o estoque foi ajustado.",
+      });
+    }
   }, [products, orders, setProducts, setOrders, toast]);
 
   const handleDeleteOrder = useCallback((orderId: string) => {
+    let orderToDelete: Order | undefined;
     startTransition(() => {
-        const orderToDelete = orders.find(o => o.id === orderId);
-        if (!orderToDelete) {
-            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-            return;
-        }
+        orderToDelete = orders.find(o => o.id === orderId);
+        if (!orderToDelete) return;
 
         const productsToUpdate: Product[] = [];
         // Only return items to stock if the order wasn't completed
@@ -291,12 +301,16 @@ export function Dashboard() {
         }
 
         setSelectedOrderForDelete(null);
-
-        toast({
-            title: "Pedido Excluído!",
-            description: "O pedido foi removido e os itens retornaram ao estoque.",
-        });
     });
+
+    if (orderToDelete) {
+      toast({
+          title: "Pedido Excluído!",
+          description: "O pedido foi removido e os itens retornaram ao estoque.",
+      });
+    } else {
+      toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+    }
   }, [orders, products, setOrders, setProducts, toast]);
   
   const handleOpenCompleteDialog = useCallback((order: Order) => {
@@ -304,20 +318,26 @@ export function Dashboard() {
     setConfirmCompleteOpen(true);
   }, []);
   
-  const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
-    let orderFound = false;
+ const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
     setOrders(prevOrders => {
       const orderIndex = prevOrders.findIndex(o => o.id === orderId);
       if (orderIndex === -1) {
-        orderFound = false;
+        toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
         return prevOrders;
       }
       
-      orderFound = true;
       const originalOrder = prevOrders[orderIndex];
-      const tempOrders = [...prevOrders];
-      const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
+      // Create a new date string for the note
+      const notePrefix = `Anotação (${new Date().toLocaleString('pt-BR')}):`;
+      const newNoteContent = note ? `${notePrefix}\n${note}` : '';
+      
+      // Append new note to existing notes
+      const newNotes = newNoteContent
+        ? (originalOrder.notes ? `${originalOrder.notes}\n\n${newNoteContent}` : newNoteContent)
+        : originalOrder.notes;
+
       const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
+      const tempOrders = [...prevOrders];
       tempOrders[orderIndex] = updatedOrder;
       
       const productsToUpdate = products.filter(p => 
@@ -326,21 +346,14 @@ export function Dashboard() {
       if (productsToUpdate.length > 0) {
         setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
       }
+      
+      toast({
+          title: "Status do Pedido Alterado!",
+          description: `O pedido foi atualizado para "${newStatus}".`,
+      });
 
       return tempOrders;
     });
-
-    startTransition(() => {
-        if (!orderFound) {
-            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-        } else {
-             toast({
-                title: "Status do Pedido Alterado!",
-                description: `O pedido foi atualizado para "${newStatus}".`,
-            });
-        }
-    });
-
   }, [products, setOrders, toast]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
