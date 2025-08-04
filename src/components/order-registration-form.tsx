@@ -162,7 +162,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
     <>
     <Form {...form}>
     <form onSubmit={form.handleSubmit(handlePreSubmit)} className="space-y-8 p-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
             <FormField
                 control={form.control}
                 name="customerName"

@@ -57,7 +57,7 @@ const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<Register
 
     return (
         <TableRow ref={setNodeRef} style={style} onClick={() => props.onOrderSelect(order)} className="cursor-pointer">
-            <TableCell className="w-12">
+            <TableCell className="w-12 hidden sm:table-cell">
                 <Button variant="ghost" size="icon" {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className="cursor-grab">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -157,7 +157,7 @@ export function RegisteredOrdersList({ orders, isLoading, ...props }: Registered
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12"></TableHead>
+          <TableHead className="w-12 hidden sm:table-cell"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden sm:table-cell">Endereço</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
@@ -175,5 +175,3 @@ export function RegisteredOrdersList({ orders, isLoading, ...props }: Registered
     </Table>
   );
 }
-
-    

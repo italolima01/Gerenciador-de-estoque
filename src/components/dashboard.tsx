@@ -401,9 +401,9 @@ useEffect(() => {
         
       <main className="container mx-auto p-4 md:p-6">
         <Tabs defaultValue="inventory" onValueChange={setActiveTab}>
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <TabsList>
-              <TabsTrigger value="orders">Pedidos Registrados</TabsTrigger>
+              <TabsTrigger value="orders">Pedidos</TabsTrigger>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             </TabsList>
