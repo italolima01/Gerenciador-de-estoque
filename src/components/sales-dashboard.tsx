@@ -3,7 +3,8 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { format, subDays, parseISO, subMonths } from 'date-fns';
+import { subDays, parseISO, subMonths } from 'date-fns';
+import { format, toZonedTime } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,6 +57,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
     const salesData = React.useMemo(() => {
         const completedOrders = orders.filter(o => o.status === 'Concluído');
+        const timeZone = 'America/Sao_Paulo';
         
         const calculateTotalValue = (order: Order) => {
             return order.items.reduce((total, item) => {
@@ -64,20 +66,22 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }, 0);
         };
 
-        const today = new Date();
+        const today = toZonedTime(new Date(), timeZone);
         
         // Weekly Data (last 7 days)
         const weeklySales: { [key: string]: number } = {};
         for (let i = 6; i >= 0; i--) {
             const date = subDays(today, i);
-            const formattedDate = format(date, 'dd/MM');
+            const formattedDate = format(date, 'dd/MM', { timeZone });
             weeklySales[formattedDate] = 0;
         }
 
         completedOrders.forEach(order => {
-            const orderDate = parseISO(order.createdAt);
-            if (orderDate >= subDays(today, 7)) {
-                const formattedDate = format(orderDate, 'dd/MM');
+            const orderDateUTC = parseISO(order.createdAt);
+            const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
+            
+            if (orderDateZoned >= subDays(today, 7)) {
+                const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone });
                 if (weeklySales[formattedDate] !== undefined) {
                     weeklySales[formattedDate] += calculateTotalValue(order);
                 }
@@ -94,17 +98,17 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
         const monthlySales: { [key: string]: number } = {};
         for (let i = 11; i >= 0; i--) {
             const date = subMonths(today, i);
-            // Format to 'Janeiro', 'Fevereiro', etc.
-            const formattedMonth = format(date, 'MMMM', { locale: ptBR });
-             // Capitalize first letter
+            const formattedMonth = format(date, 'MMMM', { locale: ptBR, timeZone });
             const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
             monthlySales[capitalizedMonth] = 0;
         }
 
         completedOrders.forEach(order => {
-            const orderDate = parseISO(order.createdAt);
-            if (orderDate >= subMonths(today, 12)) {
-                const formattedMonth = format(orderDate, 'MMMM', { locale: ptBR });
+            const orderDateUTC = parseISO(order.createdAt);
+            const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
+
+            if (orderDateZoned >= subMonths(today, 12)) {
+                const formattedMonth = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
                 const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
                  if (monthlySales[capitalizedMonth] !== undefined) {
                     monthlySales[capitalizedMonth] += calculateTotalValue(order);
