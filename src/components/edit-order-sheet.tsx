@@ -223,8 +223,8 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                         <Calendar
                             mode="single"
                             captionLayout="buttons"
-                            fromYear={new Date().getFullYear() - 1}
-                            toYear={new Date().getFullYear() + 1}
+                            fromDate={new Date()}
+                            toYear={new Date().getFullYear() + 10}
                             selected={field.value}
                             onSelect={(date) => {
                             if(date) field.onChange(date);
