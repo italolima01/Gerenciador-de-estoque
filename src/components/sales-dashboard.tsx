@@ -68,61 +68,54 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
         const todayZoned = toZonedTime(new Date(), timeZone);
         
-        // Weekly Data (last 7 days)
-        const weeklyDataMap = new Map<string, number>();
-        for (let i = 6; i >= 0; i--) {
+        // --- Weekly Data ---
+        const weeklyTotals: { [key: string]: number } = {};
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
             const date = subDays(todayZoned, i);
-            const formattedDate = format(date, 'dd/MM', { timeZone, locale: ptBR });
-            weeklyDataMap.set(formattedDate, 0);
-        }
-        
+            return format(date, 'dd/MM', { timeZone, locale: ptBR });
+        });
+
+        last7Days.forEach(day => weeklyTotals[day] = 0);
+
         completedOrders.forEach(order => {
-            const orderDateUTC = parseISO(order.createdAt);
-            const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            const dayKey = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
             
-            // Check if the order is within the last 7 days
-            const sevenDaysAgo = startOfDay(subDays(todayZoned, 6));
-            if (orderDateZoned >= sevenDaysAgo) {
-                 const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
-                if (weeklyDataMap.has(formattedDate)) {
-                    weeklyDataMap.set(formattedDate, weeklyDataMap.get(formattedDate)! + calculateTotalValue(order));
-                }
+            if (dayKey in weeklyTotals) {
+                weeklyTotals[dayKey] += calculateTotalValue(order);
             }
         });
-        
-        const weeklyChartData = Array.from(weeklyDataMap.entries()).map(([date, total]) => ({
-            date,
-            total
+
+        const weeklyChartData = last7Days.reverse().map(day => ({
+            date: day,
+            total: weeklyTotals[day],
         }));
 
-
-        // Monthly Data (last 12 months)
-        const monthlyDataMap = new Map<string, number>();
-        for (let i = 11; i >= 0; i--) {
+        // --- Monthly Data ---
+        const monthlyTotals: { [key: string]: number } = {};
+        const last12Months = Array.from({ length: 12 }, (_, i) => {
             const date = subMonths(todayZoned, i);
-            const formattedMonth = format(date, 'MMMM', { locale: ptBR, timeZone });
-            const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
-            monthlyDataMap.set(capitalizedMonth, 0);
-        }
+            const monthKey = format(date, 'MMMM', { locale: ptBR, timeZone });
+            return monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+        });
 
+        last12Months.forEach(month => monthlyTotals[month] = 0);
+        
         completedOrders.forEach(order => {
-            const orderDateUTC = parseISO(order.createdAt);
-            const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            const orderMonthKey = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
+            const capitalizedMonth = orderMonthKey.charAt(0).toUpperCase() + orderMonthKey.slice(1);
 
-            const twelveMonthsAgo = startOfDay(subMonths(todayZoned, 11));
-             if (orderDateZoned >= twelveMonthsAgo) {
-                const formattedMonth = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
-                const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
-                 if (monthlyDataMap.has(capitalizedMonth)) {
-                    monthlyDataMap.set(capitalizedMonth, monthlyDataMap.get(capitalizedMonth)! + calculateTotalValue(order));
-                }
+            if (capitalizedMonth in monthlyTotals) {
+                 monthlyTotals[capitalizedMonth] += calculateTotalValue(order);
             }
         });
 
-        const monthlyChartData = Array.from(monthlyDataMap.entries()).map(([month, total]) => ({
-            month,
-            total
+        const monthlyChartData = last12Months.reverse().map(month => ({
+            month: month,
+            total: monthlyTotals[month]
         }));
+
 
         return { weeklyChartData, monthlyChartData };
 
