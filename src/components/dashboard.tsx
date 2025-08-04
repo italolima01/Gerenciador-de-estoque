@@ -64,6 +64,7 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('inventory');
   const [productAlerts, setProductAlerts] = useState<Record<string, GenerateRestockAlertOutput>>({});
   const { toast } = useToast();
+  const [productsToRefresh, setProductsToRefresh] = useState<Product[]>([]);
   
   // Simulate initial data loading
   useEffect(() => {
@@ -79,9 +80,8 @@ export function Dashboard() {
     const completedOrders = orders.filter(o => o.status === 'Concluído');
     
     startTransition(async () => {
-        const alertsToUpdate = productsToFetch.map(p => getRestockAlert(p, completedOrders));
-        
         try {
+            const alertsToUpdate = productsToFetch.map(p => getRestockAlert(p, completedOrders));
             const results = await Promise.all(alertsToUpdate);
             const newAlerts: Record<string, GenerateRestockAlertOutput> = {};
             productsToFetch.forEach((p, index) => {
@@ -97,46 +97,53 @@ export function Dashboard() {
             });
         }
     });
-}, [orders, toast, startTransition]);
+}, [orders, toast]);
 
 
+  // Initial fetch for all products
   useEffect(() => {
     if (products.length > 0 && !isLoading) {
       fetchProductAlerts(products);
     }
-    // We only want to run this on initial load or when the base products/orders change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]); // Depend on isLoading to run once after initial data is "loaded"
+  }, [isLoading]); // This dependency array is intentionally limited
+
+  // Fetch alerts for specific products when they need a refresh
+  useEffect(() => {
+    if (productsToRefresh.length > 0) {
+      fetchProductAlerts(productsToRefresh);
+      setProductsToRefresh([]); // Reset after fetching
+    }
+  }, [productsToRefresh, fetchProductAlerts]);
 
 
-  const handleAddProduct = useCallback((newProductData: Omit<Product, 'id'>) => {
+  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     startTransition(() => {
       const newProduct = { ...newProductData, id: uuidv4() };
       const updatedProducts = [newProduct, ...products];
       setProducts(updatedProducts);
-      fetchProductAlerts([newProduct]);
+      setProductsToRefresh([newProduct]);
       setAddDialogOpen(false);
       toast({
           title: "Produto Adicionado!",
           description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
       });
     });
-  }, [products, setProducts, fetchProductAlerts, toast]);
+  };
 
-  const handleEditProduct = useCallback((updatedProductData: Product) => {
+  const handleEditProduct = (updatedProductData: Product) => {
     startTransition(() => {
       const updatedProducts = products.map(p => p.id === updatedProductData.id ? updatedProductData : p)
       setProducts(updatedProducts);
-      fetchProductAlerts([updatedProductData]);
+      setProductsToRefresh([updatedProductData]);
       setSelectedProductForEdit(null);
        toast({
           title: "Produto Atualizado!",
           description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
       });
     });
-  }, [products, setProducts, fetchProductAlerts, toast]);
+  };
 
-  const handleDeleteProduct = useCallback((productId: string) => {
+  const handleDeleteProduct = (productId: string) => {
     startTransition(() => {
       setProducts(prev => prev.filter(p => p.id !== productId));
       setProductAlerts(prev => {
@@ -150,9 +157,9 @@ export function Dashboard() {
           description: "O produto foi removido do seu inventário.",
       });
     });
-  }, [setProducts, setProductAlerts, toast]);
+  };
   
-  const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+  const handleOrderSubmit = (newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
       try {
         const productsToUpdate: Product[] = [];
@@ -177,7 +184,7 @@ export function Dashboard() {
         };
         setOrders(prev => [newOrder, ...prev]);
         
-        fetchProductAlerts(productsToUpdate);
+        setProductsToRefresh(productsToUpdate);
 
         setRegisterOrderSheetOpen(false);
         toast({
@@ -194,9 +201,9 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, setProducts, setOrders, fetchProductAlerts, toast]);
+  };
 
-  const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
+  const handleOrderUpdate = (updatedOrderData: Order) => {
     startTransition(() => {
       try {
         const originalOrder = orders.find(o => o.id === updatedOrderData.id);
@@ -235,7 +242,7 @@ export function Dashboard() {
         setProducts(tempProducts);
         setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
         
-        fetchProductAlerts(productsToUpdate);
+        setProductsToRefresh(productsToUpdate);
 
         setSelectedOrderForEdit(null);
          toast({
@@ -252,9 +259,9 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, orders, setProducts, setOrders, fetchProductAlerts, toast]);
+  };
 
-  const handleDeleteOrder = useCallback((orderId: string) => {
+  const handleDeleteOrder = (orderId: string) => {
     startTransition(() => {
         const orderToDelete = orders.find(o => o.id === orderId);
         if (!orderToDelete) {
@@ -279,7 +286,7 @@ export function Dashboard() {
         setOrders(prev => prev.filter(o => o.id !== orderId));
 
         if (productsToUpdate.length > 0) {
-            fetchProductAlerts(productsToUpdate);
+            setProductsToRefresh(productsToUpdate);
         }
 
         setSelectedOrderForDelete(null);
@@ -289,15 +296,17 @@ export function Dashboard() {
             description: "O pedido foi removido e os itens retornaram ao estoque.",
         });
     });
-  }, [orders, products, setOrders, setProducts, fetchProductAlerts, toast]);
+  };
   
-  const handleOpenCompleteDialog = useCallback((order: Order) => {
+  const handleOpenCompleteDialog = (order: Order) => {
     setOrderToComplete(order);
     setConfirmCompleteOpen(true);
-  }, []);
+  };
   
-  const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
+  const handleChangeOrderStatus = (orderId: string, newStatus: Order['status'], note?: string) => {
     startTransition(() => {
+      let originalOrder: Order | undefined;
+
       setOrders(prevOrders => {
         const orderIndex = prevOrders.findIndex(o => o.id === orderId);
         if (orderIndex === -1) {
@@ -305,7 +314,7 @@ export function Dashboard() {
           return prevOrders;
         }
         
-        const originalOrder = prevOrders[orderIndex];
+        originalOrder = prevOrders[orderIndex];
         const originalStatus = originalOrder.status;
         if (originalStatus === newStatus && !note) return prevOrders;
 
@@ -313,23 +322,21 @@ export function Dashboard() {
         const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
         tempOrders[orderIndex] = { ...originalOrder, status: newStatus, notes: newNotes };
         
-        // Do not toast here as it can cause render loops if this function is called from useEffect
-        // Toasting should happen in the event handler that calls this.
-
-        // Trigger alert refresh for the involved products
-        const productsToUpdate = products.filter(p => 
-            originalOrder.items.some(item => item.productId === p.id)
-        );
-        if (productsToUpdate.length > 0) {
-            fetchProductAlerts(productsToUpdate);
+        // Trigger alert refresh for the involved products, if order exists
+        if (originalOrder) {
+          const productsToUpdate = products.filter(p => 
+              originalOrder!.items.some(item => item.productId === p.id)
+          );
+           if (productsToUpdate.length > 0) {
+              setProductsToRefresh(current => [...current, ...productsToUpdate]);
+          }
         }
-
         return tempOrders;
       });
     });
-  }, [products, setOrders, fetchProductAlerts, toast]);
+  };
 
-  const handleCompleteOrderWithNote = useCallback((note: string) => {
+  const handleCompleteOrderWithNote = (note: string) => {
     if (!orderToComplete) return;
     handleChangeOrderStatus(orderToComplete.id, 'Concluído', note);
     setOrderToComplete(null);
@@ -338,9 +345,9 @@ export function Dashboard() {
         title: "Status do Pedido Alterado!",
         description: `O pedido foi atualizado para "Concluído".`,
     });
-  }, [orderToComplete, handleChangeOrderStatus, toast]);
+  };
   
-  const handleCompleteOrderWithoutNote = useCallback(() => {
+  const handleCompleteOrderWithoutNote = () => {
       if (!orderToComplete) return;
       handleChangeOrderStatus(orderToComplete.id, 'Concluído');
       setOrderToComplete(null);
@@ -349,7 +356,7 @@ export function Dashboard() {
           title: "Status do Pedido Alterado!",
           description: `O pedido foi atualizado para "Concluído".`,
       });
-  }, [orderToComplete, handleChangeOrderStatus, toast]);
+  };
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const {active, over} = event;
