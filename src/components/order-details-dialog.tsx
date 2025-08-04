@@ -14,6 +14,7 @@ import { format, parseISO } from 'date-fns';
 import { Separator } from './ui/separator';
 import { Package, User, Calendar, FileText, CheckCircle, XCircle, Clock, MapPin } from 'lucide-react';
 import type { Product } from '@/lib/types';
+import { ScrollArea } from './ui/scroll-area';
 
 interface OrderDetailsDialogProps {
   order: Order;
@@ -44,7 +45,7 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center gap-2">
             <Package className="h-6 w-6 text-primary" />
@@ -54,7 +55,8 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
             ID do Pedido: {order.id}
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-4 grid gap-6">
+        <ScrollArea className="pr-6 -mr-6">
+        <div className="grid gap-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-muted-foreground" />
@@ -118,11 +120,12 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
                     <FileText className="h-5 w-5 text-muted-foreground mt-1" />
                     <div>
                         <p className="text-sm text-muted-foreground">Anotações</p>
-                        <p className="text-sm">{order.notes}</p>
+                        <p className="text-sm whitespace-pre-wrap">{order.notes}</p>
                     </div>
                 </div>
             )}
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
