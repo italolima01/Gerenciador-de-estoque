@@ -46,18 +46,25 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-function getExpirationDateColor(expirationDate: string): string {
+function getExpirationInfo(expirationDate: string): { color: string; text: string } {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Compare dates only, not time
     const expiry = parseISO(expirationDate);
     const daysUntilExpiration = differenceInDays(expiry, today);
 
+    if (daysUntilExpiration < 0) {
+        return { color: 'text-destructive', text: 'Vencido' };
+    }
+
+    const formattedDate = new Date(expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+
     if (daysUntilExpiration <= 14) {
-        return 'text-destructive'; // Red for 14 days or less
+        return { color: 'text-destructive', text: `Vencimento: ${formattedDate}` };
     }
     if (daysUntilExpiration <= 30) {
-        return 'text-yellow-600'; // Yellow for 15-30 days
+        return { color: 'text-yellow-600', text: `Vencimento: ${formattedDate}` };
     }
-    return 'text-green-600'; // Green for more than 30 days
+    return { color: 'text-green-600', text: `Vencimento: ${formattedDate}` };
 }
 
 function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green'; variant: BadgeProps['variant'] } {
@@ -72,8 +79,7 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
 
 
 export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick, isAlertLoading }: ProductCardProps) {
-  const expirationDateColor = getExpirationDateColor(product.expirationDate);
-  const formattedExpirationDate = new Date(product.expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+  const expirationInfo = getExpirationInfo(product.expirationDate);
   
   const quantityZone = getZoneForQuantity(product.quantity);
   const displayZone = isAlertLoading ? quantityZone.zone : product.zone;
@@ -100,8 +106,8 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
         </div>
       </CardHeader>
       <CardContent className="flex-grow p-4 pt-0" onClick={onAlertClick}>
-        <CardDescription className={cn("font-medium", expirationDateColor)}>
-            Vencimento: {formattedExpirationDate}
+        <CardDescription className={cn("font-medium", expirationInfo.color)}>
+            {expirationInfo.text}
         </CardDescription>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
