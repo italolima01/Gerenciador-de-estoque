@@ -77,13 +77,14 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             weeklySales[formattedDate] = 0;
             last7Days.push(formattedDate);
         }
+        
+        const sevenDaysAgoStart = startOfDay(subDays(todayZoned, 6));
 
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
             
-            // Compare only dates, ignoring time
-            if (orderDateZoned >= subDays(startOfDay(todayZoned), 6)) {
+            if (orderDateZoned >= sevenDaysAgoStart) {
                 const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone });
                 if (weeklySales[formattedDate] !== undefined) {
                     weeklySales[formattedDate] += calculateTotalValue(order);
@@ -108,11 +109,13 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             last12Months.push(capitalizedMonth);
         }
 
+        const twelveMonthsAgoStart = startOfDay(subMonths(todayZoned, 11));
+
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
             
-            if (orderDateZoned >= subMonths(startOfDay(todayZoned), 11)) {
+            if (orderDateZoned >= twelveMonthsAgoStart) {
                 const formattedMonth = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
                 const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
                  if (monthlySales[capitalizedMonth] !== undefined) {
@@ -195,4 +198,3 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
         </div>
     );
 }
-
