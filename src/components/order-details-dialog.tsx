@@ -119,8 +119,8 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
                  <div className="flex items-start gap-3">
                     <FileText className="h-5 w-5 text-muted-foreground mt-1" />
                     <div>
-                        <p className="text-sm text-muted-foreground">Anotações</p>
-                        <p className="text-sm whitespace-pre-wrap">{order.notes}</p>
+                        <p className="font-semibold text-foreground">Anotações</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes}</p>
                     </div>
                 </div>
             )}
