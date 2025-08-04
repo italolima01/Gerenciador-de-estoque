@@ -3,7 +3,8 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { subDays, parseISO, subMonths, startOfDay, format } from 'date-fns';
+import { subDays, startOfDay, parseISO, subMonths } from 'date-fns';
+import { format, toZonedTime } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -55,6 +56,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export function SalesDashboard({ orders, products, isLoading }: SalesDashboardProps) {
 
     const salesData = React.useMemo(() => {
+        const timeZone = 'America/Sao_Paulo';
         const completedOrders = orders.filter(o => o.status === 'Concluído');
         
         const calculateTotalValue = (order: Order) => {
@@ -64,60 +66,64 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }, 0);
         };
 
-        const today = startOfDay(new Date());
+        const todayZoned = toZonedTime(new Date(), timeZone);
         
         // --- Weekly Data ---
-        const weeklyChartData = Array.from({ length: 7 }, (_, i) => {
-            const date = subDays(today, i);
-            return {
-                date: format(date, 'dd/MM', { locale: ptBR }),
-                total: 0,
-            };
-        }).reverse();
+        const weeklySalesMap: { [key: string]: number } = {};
+        const weekDays: string[] = [];
+
+        for (let i = 6; i >= 0; i--) {
+            const date = subDays(todayZoned, i);
+            const formattedDate = format(date, 'dd/MM', { timeZone, locale: ptBR });
+            weekDays.push(formattedDate);
+            weeklySalesMap[formattedDate] = 0;
+        }
 
         completedOrders.forEach(order => {
-            const orderDate = startOfDay(parseISO(order.createdAt));
-            const dayDifference = Math.round((today.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            const sixDaysAgo = startOfDay(subDays(todayZoned, 6));
 
-            if (dayDifference >= 0 && dayDifference < 7) {
-                const dayIndex = 6 - dayDifference;
-                if(weeklyChartData[dayIndex]) {
-                    weeklyChartData[dayIndex].total += calculateTotalValue(order);
+            if (orderDateZoned >= sixDaysAgo) {
+                const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
+                if (formattedDate in weeklySalesMap) {
+                    weeklySalesMap[formattedDate] += calculateTotalValue(order);
                 }
             }
         });
+        
+        const weeklyChartData = weekDays.map(date => ({
+            date,
+            total: weeklySalesMap[date] || 0
+        }));
 
         // --- Monthly Data ---
-        const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
-            const date = subMonths(today, i);
-            return {
-                month: format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase()),
-                total: 0
-            };
-        }).reverse();
-        
-        const monthMap = monthlyChartData.reduce((acc, item, index) => {
-            acc[item.month] = index;
-            return acc;
-        }, {} as Record<string, number>);
+        const monthlySalesMap: { [key: string]: number } = {};
+        const monthLabels: string[] = [];
+
+        for (let i = 11; i >= 0; i--) {
+            const date = subMonths(todayZoned, i);
+            const monthKey = format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
+            monthLabels.push(monthKey);
+            monthlySalesMap[monthKey] = 0;
+        }
+
+        const firstMonthOfChart = startOfDay(subMonths(todayZoned, 11));
 
         completedOrders.forEach(order => {
-            const orderDate = parseISO(order.createdAt);
-            const orderMonthKey = format(orderDate, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
-            
-            if (orderMonthKey in monthMap) {
-                const monthIndex = monthMap[orderMonthKey];
-                const orderYear = orderDate.getFullYear();
-                const chartYear = subMonths(today, 11 - monthIndex).getFullYear();
-                
-                // Ensure the sale is within the last 12 months from today
-                if (orderDate >= subMonths(today, 11)) {
-                   if (monthlyChartData[monthIndex]) {
-                        monthlyChartData[monthIndex].total += calculateTotalValue(order);
-                   }
+            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
+            if (orderDateZoned >= firstMonthOfChart) {
+                const monthKey = format(orderDateZoned, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
+                if (monthKey in monthlySalesMap) {
+                    monthlySalesMap[monthKey] += calculateTotalValue(order);
                 }
             }
         });
+
+        const monthlyChartData = monthLabels.map(month => ({
+            month,
+            total: monthlySalesMap[month] || 0
+        }));
+
 
         return { weeklyChartData, monthlyChartData };
 
