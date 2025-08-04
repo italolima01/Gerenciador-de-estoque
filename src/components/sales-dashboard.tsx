@@ -3,8 +3,7 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { subDays, parseISO, subMonths, startOfDay } from 'date-fns';
-import { format, toZonedTime } from 'date-fns-tz';
+import { subDays, parseISO, subMonths, startOfDay, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -57,7 +56,6 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
 
     const salesData = React.useMemo(() => {
         const completedOrders = orders.filter(o => o.status === 'Concluído');
-        const timeZone = 'America/Sao_Paulo';
         
         const calculateTotalValue = (order: Order) => {
             return order.items.reduce((total, item) => {
@@ -66,56 +64,60 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }, 0);
         };
 
-        const todayZoned = toZonedTime(new Date(), timeZone);
+        const today = startOfDay(new Date());
         
         // --- Weekly Data ---
-        const weeklyTotals: { [key: string]: number } = {};
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const date = subDays(todayZoned, i);
-            return format(date, 'dd/MM', { timeZone, locale: ptBR });
-        });
-
-        last7Days.forEach(day => weeklyTotals[day] = 0);
+        const weeklyChartData = Array.from({ length: 7 }, (_, i) => {
+            const date = subDays(today, i);
+            return {
+                date: format(date, 'dd/MM', { locale: ptBR }),
+                total: 0,
+            };
+        }).reverse();
 
         completedOrders.forEach(order => {
-            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
-            const dayKey = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
-            
-            if (dayKey in weeklyTotals) {
-                weeklyTotals[dayKey] += calculateTotalValue(order);
+            const orderDate = startOfDay(parseISO(order.createdAt));
+            const dayDifference = Math.round((today.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (dayDifference >= 0 && dayDifference < 7) {
+                const dayIndex = 6 - dayDifference;
+                if(weeklyChartData[dayIndex]) {
+                    weeklyChartData[dayIndex].total += calculateTotalValue(order);
+                }
             }
         });
-
-        const weeklyChartData = last7Days.reverse().map(day => ({
-            date: day,
-            total: weeklyTotals[day],
-        }));
 
         // --- Monthly Data ---
-        const monthlyTotals: { [key: string]: number } = {};
-        const last12Months = Array.from({ length: 12 }, (_, i) => {
-            const date = subMonths(todayZoned, i);
-            const monthKey = format(date, 'MMMM', { locale: ptBR, timeZone });
-            return monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
-        });
-
-        last12Months.forEach(month => monthlyTotals[month] = 0);
+        const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
+            const date = subMonths(today, i);
+            return {
+                month: format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase()),
+                total: 0
+            };
+        }).reverse();
         
-        completedOrders.forEach(order => {
-            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
-            const orderMonthKey = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
-            const capitalizedMonth = orderMonthKey.charAt(0).toUpperCase() + orderMonthKey.slice(1);
+        const monthMap = monthlyChartData.reduce((acc, item, index) => {
+            acc[item.month] = index;
+            return acc;
+        }, {} as Record<string, number>);
 
-            if (capitalizedMonth in monthlyTotals) {
-                 monthlyTotals[capitalizedMonth] += calculateTotalValue(order);
+        completedOrders.forEach(order => {
+            const orderDate = parseISO(order.createdAt);
+            const orderMonthKey = format(orderDate, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
+            
+            if (orderMonthKey in monthMap) {
+                const monthIndex = monthMap[orderMonthKey];
+                const orderYear = orderDate.getFullYear();
+                const chartYear = subMonths(today, 11 - monthIndex).getFullYear();
+                
+                // Ensure the sale is within the last 12 months from today
+                if (orderDate >= subMonths(today, 11)) {
+                   if (monthlyChartData[monthIndex]) {
+                        monthlyChartData[monthIndex].total += calculateTotalValue(order);
+                   }
+                }
             }
         });
-
-        const monthlyChartData = last12Months.reverse().map(month => ({
-            month: month,
-            total: monthlyTotals[month]
-        }));
-
 
         return { weeklyChartData, monthlyChartData };
 
