@@ -108,8 +108,8 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
                             </div>
                         )
                     })}
-                    <div className="flex justify-between items-center p-3 font-bold border-t-2">
-                        <span>Total</span>
+                    <div className="flex justify-between items-center p-3 font-bold border-t-2 bg-muted/50">
+                        <span>Valor Total da Compra</span>
                         <span>{formatCurrency(totalOrderValue)}</span>
                     </div>
                 </div>
