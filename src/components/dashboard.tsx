@@ -1,4 +1,5 @@
 
+      
 'use client';
 
 import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
@@ -128,7 +129,7 @@ export function Dashboard() {
           description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
       });
     });
-  }, [products, setProducts]);
+  }, [products, setProducts, toast]);
 
   const handleEditProduct = useCallback((updatedProductData: Product) => {
     startTransition(() => {
@@ -141,7 +142,7 @@ export function Dashboard() {
           description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
       });
     });
-  }, [products, setProducts]);
+  }, [products, setProducts, toast]);
 
   const handleDeleteProduct = useCallback((productId: string) => {
     startTransition(() => {
@@ -157,7 +158,7 @@ export function Dashboard() {
           description: "O produto foi removido do seu inventário.",
       });
     });
-  }, [setProducts, setProductAlerts]);
+  }, [setProducts, setProductAlerts, toast]);
   
   const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
@@ -201,7 +202,7 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, setProducts, setOrders]);
+  }, [products, setProducts, setOrders, toast]);
 
   const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
     startTransition(() => {
@@ -259,7 +260,7 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, orders, setProducts, setOrders]);
+  }, [products, orders, setProducts, setOrders, toast]);
 
   const handleDeleteOrder = useCallback((orderId: string) => {
     startTransition(() => {
@@ -296,7 +297,7 @@ export function Dashboard() {
             description: "O pedido foi removido e os itens retornaram ao estoque.",
         });
     });
-  }, [orders, products, setOrders, setProducts]);
+  }, [orders, products, setOrders, setProducts, toast]);
   
   const handleOpenCompleteDialog = useCallback((order: Order) => {
     setOrderToComplete(order);
@@ -304,36 +305,43 @@ export function Dashboard() {
   }, []);
   
   const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
-    startTransition(() => {
-      setOrders(prevOrders => {
-        const orderIndex = prevOrders.findIndex(o => o.id === orderId);
-        if (orderIndex === -1) {
-          toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-          return prevOrders;
-        }
-        
-        const originalOrder = prevOrders[orderIndex];
-        const tempOrders = [...prevOrders];
-        const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
-        const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
-        tempOrders[orderIndex] = updatedOrder;
-        
-        const productsToUpdate = products.filter(p => 
-            updatedOrder.items.some(item => item.productId === p.id)
-        );
-        if (productsToUpdate.length > 0) {
-          setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
-        }
+    let orderFound = false;
+    setOrders(prevOrders => {
+      const orderIndex = prevOrders.findIndex(o => o.id === orderId);
+      if (orderIndex === -1) {
+        orderFound = false;
+        return prevOrders;
+      }
+      
+      orderFound = true;
+      const originalOrder = prevOrders[orderIndex];
+      const tempOrders = [...prevOrders];
+      const newNotes = note ? (originalOrder.notes ? `${originalOrder.notes}\n---\n${note}` : note) : originalOrder.notes;
+      const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
+      tempOrders[orderIndex] = updatedOrder;
+      
+      const productsToUpdate = products.filter(p => 
+          updatedOrder.items.some(item => item.productId === p.id)
+      );
+      if (productsToUpdate.length > 0) {
+        setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
+      }
 
-        toast({
-            title: "Status do Pedido Alterado!",
-            description: `O pedido foi atualizado para "${newStatus}".`,
-        });
-
-        return tempOrders;
-      });
+      return tempOrders;
     });
-  }, [products, setOrders]);
+
+    startTransition(() => {
+        if (!orderFound) {
+            toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+        } else {
+             toast({
+                title: "Status do Pedido Alterado!",
+                description: `O pedido foi atualizado para "${newStatus}".`,
+            });
+        }
+    });
+
+  }, [products, setOrders, toast]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
     if (!orderToComplete) return;
@@ -657,4 +665,5 @@ export function Dashboard() {
   );
 }
 
+    
     
