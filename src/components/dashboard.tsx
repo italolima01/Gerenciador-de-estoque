@@ -128,7 +128,7 @@ export function Dashboard() {
           description: `"${newProduct.name}" foi adicionado ao seu inventário.`,
       });
     });
-  }, [products, setProducts, toast]);
+  }, [products, setProducts]);
 
   const handleEditProduct = useCallback((updatedProductData: Product) => {
     startTransition(() => {
@@ -141,7 +141,7 @@ export function Dashboard() {
           description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
       });
     });
-  }, [products, setProducts, toast]);
+  }, [products, setProducts]);
 
   const handleDeleteProduct = useCallback((productId: string) => {
     startTransition(() => {
@@ -157,7 +157,7 @@ export function Dashboard() {
           description: "O produto foi removido do seu inventário.",
       });
     });
-  }, [setProducts, setProductAlerts, toast]);
+  }, [setProducts, setProductAlerts]);
   
   const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     startTransition(() => {
@@ -201,7 +201,7 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, setProducts, setOrders, toast]);
+  }, [products, setProducts, setOrders]);
 
   const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
     startTransition(() => {
@@ -259,7 +259,7 @@ export function Dashboard() {
         });
       }
     });
-  }, [products, orders, setProducts, setOrders, toast]);
+  }, [products, orders, setProducts, setOrders]);
 
   const handleDeleteOrder = useCallback((orderId: string) => {
     startTransition(() => {
@@ -296,7 +296,7 @@ export function Dashboard() {
             description: "O pedido foi removido e os itens retornaram ao estoque.",
         });
     });
-  }, [orders, products, setOrders, setProducts, toast]);
+  }, [orders, products, setOrders, setProducts]);
   
   const handleOpenCompleteDialog = useCallback((order: Order) => {
     setOrderToComplete(order);
@@ -333,7 +333,7 @@ export function Dashboard() {
         return tempOrders;
       });
     });
-  }, [products, setOrders, toast]);
+  }, [products, setOrders]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
     if (!orderToComplete) return;
@@ -656,3 +656,5 @@ export function Dashboard() {
     </>
   );
 }
+
+    
