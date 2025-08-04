@@ -69,66 +69,60 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
         const todayZoned = toZonedTime(new Date(), timeZone);
         
         // Weekly Data (last 7 days)
-        const weeklySales: { [key: string]: number } = {};
-        const last7Days: string[] = [];
+        const weeklyDataMap = new Map<string, number>();
         for (let i = 6; i >= 0; i--) {
             const date = subDays(todayZoned, i);
-            const formattedDate = format(date, 'dd/MM', { timeZone });
-            weeklySales[formattedDate] = 0;
-            last7Days.push(formattedDate);
+            const formattedDate = format(date, 'dd/MM', { timeZone, locale: ptBR });
+            weeklyDataMap.set(formattedDate, 0);
         }
         
-        const sevenDaysAgoStart = startOfDay(subDays(todayZoned, 6));
-
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
             
-            if (orderDateZoned >= sevenDaysAgoStart) {
-                const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone });
-                if (weeklySales[formattedDate] !== undefined) {
-                    weeklySales[formattedDate] += calculateTotalValue(order);
+            // Check if the order is within the last 7 days
+            const sevenDaysAgo = startOfDay(subDays(todayZoned, 6));
+            if (orderDateZoned >= sevenDaysAgo) {
+                 const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
+                if (weeklyDataMap.has(formattedDate)) {
+                    weeklyDataMap.set(formattedDate, weeklyDataMap.get(formattedDate)! + calculateTotalValue(order));
                 }
             }
         });
         
-        const weeklyChartData = last7Days.map(date => ({
+        const weeklyChartData = Array.from(weeklyDataMap.entries()).map(([date, total]) => ({
             date,
-            total: weeklySales[date]
+            total
         }));
 
 
         // Monthly Data (last 12 months)
-        const monthlySales: { [key: string]: number } = {};
-        const last12Months: string[] = [];
+        const monthlyDataMap = new Map<string, number>();
         for (let i = 11; i >= 0; i--) {
             const date = subMonths(todayZoned, i);
             const formattedMonth = format(date, 'MMMM', { locale: ptBR, timeZone });
             const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
-            monthlySales[capitalizedMonth] = 0;
-            last12Months.push(capitalizedMonth);
+            monthlyDataMap.set(capitalizedMonth, 0);
         }
-
-        const twelveMonthsAgoStart = startOfDay(subMonths(todayZoned, 11));
 
         completedOrders.forEach(order => {
             const orderDateUTC = parseISO(order.createdAt);
             const orderDateZoned = toZonedTime(orderDateUTC, timeZone);
-            
-            if (orderDateZoned >= twelveMonthsAgoStart) {
+
+            const twelveMonthsAgo = startOfDay(subMonths(todayZoned, 11));
+             if (orderDateZoned >= twelveMonthsAgo) {
                 const formattedMonth = format(orderDateZoned, 'MMMM', { locale: ptBR, timeZone });
                 const capitalizedMonth = formattedMonth.charAt(0).toUpperCase() + formattedMonth.slice(1);
-                 if (monthlySales[capitalizedMonth] !== undefined) {
-                    monthlySales[capitalizedMonth] += calculateTotalValue(order);
+                 if (monthlyDataMap.has(capitalizedMonth)) {
+                    monthlyDataMap.set(capitalizedMonth, monthlyDataMap.get(capitalizedMonth)! + calculateTotalValue(order));
                 }
             }
         });
 
-        const monthlyChartData = last12Months.map(month => ({
+        const monthlyChartData = Array.from(monthlyDataMap.entries()).map(([month, total]) => ({
             month,
-            total: monthlySales[month]
+            total
         }));
-
 
         return { weeklyChartData, monthlyChartData };
 
