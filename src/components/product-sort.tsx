@@ -20,7 +20,7 @@ export function ProductSort({
   onSortDirectionChange,
 }: ProductSortProps) {
   return (
-    <div className="flex-grow grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       <Select value={sortOption} onValueChange={(v) => onSortOptionChange(v as SortOption)}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Ordenar por..." />
