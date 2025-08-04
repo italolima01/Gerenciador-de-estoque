@@ -66,63 +66,48 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             }, 0);
         };
 
-        const todayZoned = toZonedTime(new Date(), timeZone);
-        
-        // --- Weekly Data ---
-        const weeklySalesMap: { [key: string]: number } = {};
-        const weekDays: string[] = [];
+        const today = toZonedTime(new Date(), timeZone);
 
-        for (let i = 6; i >= 0; i--) {
-            const date = subDays(todayZoned, i);
-            const formattedDate = format(date, 'dd/MM', { timeZone, locale: ptBR });
-            weekDays.push(formattedDate);
-            weeklySalesMap[formattedDate] = 0;
+        // --- Weekly Data ---
+        const weeklySalesMap = new Map<string, number>();
+        for (const order of completedOrders) {
+            const orderDate = toZonedTime(parseISO(order.createdAt), timeZone);
+            const dateKey = format(orderDate, 'yyyy-MM-dd', { timeZone });
+            const currentTotal = weeklySalesMap.get(dateKey) || 0;
+            weeklySalesMap.set(dateKey, currentTotal + calculateTotalValue(order));
         }
 
-        completedOrders.forEach(order => {
-            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
-            const sixDaysAgo = startOfDay(subDays(todayZoned, 6));
+        const weeklyChartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = subDays(today, i);
+            const dateKey = format(date, 'yyyy-MM-dd', { timeZone });
+            const label = format(date, 'dd/MM', { timeZone });
+            weeklyChartData.push({
+                date: label,
+                total: weeklySalesMap.get(dateKey) || 0
+            });
+        }
 
-            if (orderDateZoned >= sixDaysAgo) {
-                const formattedDate = format(orderDateZoned, 'dd/MM', { timeZone, locale: ptBR });
-                if (formattedDate in weeklySalesMap) {
-                    weeklySalesMap[formattedDate] += calculateTotalValue(order);
-                }
-            }
-        });
-        
-        const weeklyChartData = weekDays.map(date => ({
-            date,
-            total: weeklySalesMap[date] || 0
-        }));
 
         // --- Monthly Data ---
-        const monthlySalesMap: { [key: string]: number } = {};
-        const monthLabels: string[] = [];
-
-        for (let i = 11; i >= 0; i--) {
-            const date = subMonths(todayZoned, i);
-            const monthKey = format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
-            monthLabels.push(monthKey);
-            monthlySalesMap[monthKey] = 0;
+        const monthlySalesMap = new Map<string, number>();
+         for (const order of completedOrders) {
+            const orderDate = toZonedTime(parseISO(order.createdAt), timeZone);
+            const monthKey = format(orderDate, 'yyyy-MM', { timeZone });
+            const currentTotal = monthlySalesMap.get(monthKey) || 0;
+            monthlySalesMap.set(monthKey, currentTotal + calculateTotalValue(order));
         }
 
-        const firstMonthOfChart = startOfDay(subMonths(todayZoned, 11));
-
-        completedOrders.forEach(order => {
-            const orderDateZoned = toZonedTime(parseISO(order.createdAt), timeZone);
-            if (orderDateZoned >= firstMonthOfChart) {
-                const monthKey = format(orderDateZoned, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
-                if (monthKey in monthlySalesMap) {
-                    monthlySalesMap[monthKey] += calculateTotalValue(order);
-                }
-            }
-        });
-
-        const monthlyChartData = monthLabels.map(month => ({
-            month,
-            total: monthlySalesMap[month] || 0
-        }));
+        const monthlyChartData = [];
+        for (let i = 11; i >= 0; i--) {
+            const date = subMonths(today, i);
+            const monthKey = format(date, 'yyyy-MM', { timeZone });
+            const label = format(date, 'MMMM', { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase());
+             monthlyChartData.push({
+                month: label,
+                total: monthlySalesMap.get(monthKey) || 0
+            });
+        }
 
 
         return { weeklyChartData, monthlyChartData };
