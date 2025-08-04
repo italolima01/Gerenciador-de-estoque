@@ -19,7 +19,7 @@ interface DeleteProductDialogProps {
   product: Product;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onDelete: () => void;
+  onConfirm: () => void;
   isPending: boolean;
 }
 
@@ -27,7 +27,7 @@ export function DeleteProductDialog({
   product,
   isOpen,
   onOpenChange,
-  onDelete,
+  onConfirm,
   isPending,
 }: DeleteProductDialogProps) {
   return (
@@ -46,7 +46,7 @@ export function DeleteProductDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button onClick={onDelete} disabled={isPending} variant="destructive">
+            <Button onClick={onConfirm} disabled={isPending} variant="destructive">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sim, excluir produto
             </Button>
@@ -57,3 +57,4 @@ export function DeleteProductDialog({
   );
 }
 
+    
