@@ -2,14 +2,15 @@
 'use client';
 
 import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
-import { PlusCircle, Search } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { differenceInDays, parseISO } from 'date-fns';
 
 import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
 import { products as initialProducts, orders as initialOrders } from '@/lib/data';
-import { getRestockAlert, searchProducts } from '@/app/actions';
+import { getRestockAlert } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/product-card';
@@ -20,7 +21,6 @@ import { Logo } from '@/components/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RegisteredOrdersList } from './registered-orders-list';
 import { OrderDetailsDialog } from './order-details-dialog';
-import { Input } from './ui/input';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -31,6 +31,7 @@ import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
 import { SalesDashboard } from './sales-dashboard';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { ProductFilters } from './product-filters';
 
 
 function removeAccents(str: string) {
@@ -54,7 +55,11 @@ export function Dashboard() {
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
   const [isConfirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
+  
   const [searchQuery, setSearchQuery] = useState('');
+  const [quantityFilter, setQuantityFilter] = useState('all');
+  const [expirationFilter, setExpirationFilter] = useState('all');
+
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState('inventory');
   const [productAlerts, setProductAlerts] = useState<Record<string, GenerateRestockAlertOutput>>({});
@@ -337,14 +342,41 @@ useEffect(() => {
 
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery) {
-      return products;
-    }
-    const normalizedQuery = removeAccents(searchQuery.toLowerCase());
-    return products.filter(product =>
-      removeAccents(product.name.toLowerCase()).includes(normalizedQuery)
-    );
-  }, [products, searchQuery]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return products.filter(product => {
+      // Name filter
+      const nameMatch = searchQuery ? removeAccents(product.name.toLowerCase()).includes(removeAccents(searchQuery.toLowerCase())) : true;
+
+      // Quantity filter
+      const quantityMatch = (() => {
+        switch (quantityFilter) {
+          case 'low': return product.quantity <= 20;
+          case 'medium': return product.quantity > 20 && product.quantity <= 50;
+          case 'high': return product.quantity > 50;
+          case 'all':
+          default: return true;
+        }
+      })();
+
+      // Expiration filter
+      const expirationMatch = (() => {
+        const expiryDate = parseISO(product.expirationDate);
+        const daysLeft = differenceInDays(expiryDate, today);
+
+        switch (expirationFilter) {
+          case 'expired': return daysLeft < 0;
+          case '7days': return daysLeft >= 0 && daysLeft <= 7;
+          case '30days': return daysLeft > 7 && daysLeft <= 30;
+          case 'all':
+          default: return true;
+        }
+      })();
+
+      return nameMatch && quantityMatch && expirationMatch;
+    });
+  }, [products, searchQuery, quantityFilter, expirationFilter]);
 
 
   const headerButton = useMemo(() => {
@@ -423,16 +455,14 @@ useEffect(() => {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
                 <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
             </div>
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Pesquisar produtos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-background pl-10"
-              />
-            </div>
+            <ProductFilters
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              quantityFilter={quantityFilter}
+              onQuantityFilterChange={setQuantityFilter}
+              expirationFilter={expirationFilter}
+              onExpirationFilterChange={setExpirationFilter}
+            />
             {isLoading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
@@ -467,6 +497,14 @@ useEffect(() => {
                     );
                 })}
               </div>
+            )}
+            {!isLoading && filteredProducts.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center mt-6">
+                    <h3 className="text-xl font-semibold tracking-tight text-muted-foreground">Nenhum Produto Encontrado</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Tente ajustar os filtros ou adicione um novo produto.
+                    </p>
+                </div>
             )}
           </TabsContent>
            <TabsContent value="orders">
