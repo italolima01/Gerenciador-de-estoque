@@ -479,6 +479,7 @@ useEffect(() => {
                 <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <RegisteredOrdersList 
                         orders={orders}
+                        products={products}
                         isLoading={isLoading}
                         onOrderSelect={(order) => setSelectedOrderForDetails(order)}
                         onOrderEdit={setSelectedOrderForEdit}

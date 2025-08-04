@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Order } from '@/lib/types';
+import type { Order, Product } from '@/lib/types';
 import {
   Table,
   TableHeader,
@@ -28,6 +28,7 @@ import * as React from 'react';
 
 interface RegisteredOrdersListProps {
   orders: Order[];
+  products: Product[];
   isLoading: boolean;
   onOrderSelect: (order: Order) => void;
   onOrderEdit: (order: Order) => void;
@@ -41,7 +42,14 @@ const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
   Concluído: 'success',
 };
 
-const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading'>) => {
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
+}
+
+const DraggableTableRow = ({ order, products, ...props }: { order: Order, products: Product[] } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading' | 'products'>) => {
     const {
         attributes,
         listeners,
@@ -55,6 +63,14 @@ const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<Register
         transition,
     };
 
+    const totalOrderValue = React.useMemo(() => {
+        return order.items.reduce((total, item) => {
+            const product = products.find(p => p.id === item.productId);
+            return total + (product?.price || 0) * item.quantity;
+        }, 0);
+    }, [order.items, products]);
+
+
     return (
         <TableRow ref={setNodeRef} style={style} onClick={() => props.onOrderSelect(order)} className="cursor-pointer">
             <TableCell className="w-12 hidden sm:table-cell">
@@ -65,19 +81,19 @@ const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<Register
             <TableCell>
               <div className="font-medium">{order.customerName}</div>
               <div className="text-sm text-muted-foreground md:hidden">
-                Entrega: {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+                {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
               </div>
             </TableCell>
-            <TableCell className="hidden sm:table-cell max-w-xs truncate">
-              {order.address}
-            </TableCell>
             <TableCell className="hidden md:table-cell">
-              {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
+                {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
             </TableCell>
-            <TableCell>
-              <Badge variant={statusVariantMap[order.status]}>
-                {order.status}
-              </Badge>
+             <TableCell className="hidden sm:table-cell">
+                <Badge variant={statusVariantMap[order.status]}>
+                    {order.status}
+                </Badge>
+            </TableCell>
+            <TableCell className="hidden sm:table-cell text-right font-medium">
+                {formatCurrency(totalOrderValue)}
             </TableCell>
             <TableCell className="text-right">
                 <DropdownMenu>
@@ -122,7 +138,7 @@ const DraggableTableRow = ({ order, ...props }: { order: Order } & Omit<Register
     )
 }
 
-export function RegisteredOrdersList({ orders, isLoading, ...props }: RegisteredOrdersListProps) {
+export function RegisteredOrdersList({ orders, products, isLoading, ...props }: RegisteredOrdersListProps) {
   if (isLoading) {
     return (
         <div className="space-y-2">
@@ -159,16 +175,16 @@ export function RegisteredOrdersList({ orders, isLoading, ...props }: Registered
         <TableRow>
           <TableHead className="w-12 hidden sm:table-cell"></TableHead>
           <TableHead>Cliente</TableHead>
-          <TableHead className="hidden sm:table-cell">Endereço</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead className="hidden sm:table-cell">Status</TableHead>
+          <TableHead className="hidden sm:table-cell text-right">Valor Total</TableHead>
           <TableHead className="text-right">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <SortableContext items={orders.map(o => o.id)} strategy={verticalListSortingStrategy}>
             {orders.map((order) => (
-              <DraggableTableRow key={order.id} order={order} {...props} />
+              <DraggableTableRow key={order.id} order={order} products={products} {...props} />
             ))}
         </SortableContext>
       </TableBody>
