@@ -45,7 +45,7 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh]">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center gap-2">
             <Package className="h-6 w-6 text-primary" />
@@ -55,7 +55,7 @@ export function OrderDetailsDialog({ order, products, isOpen, onOpenChange }: Or
             ID do Pedido: {order.id}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="pr-6 -mr-6">
+        <ScrollArea className="max-h-[70vh] pr-6">
         <div className="grid gap-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
