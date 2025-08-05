@@ -99,7 +99,7 @@ export function Dashboard() {
             // });
         }
     });
-}, [orders, toast]);
+}, [orders]);
 
 
   // Initial fetch for all products
@@ -108,7 +108,7 @@ export function Dashboard() {
       fetchProductAlerts(products);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, isLoading]);
+  }, [products, isLoading, fetchProductAlerts]);
 
   // Fetch alerts for specific products when they need a refresh
   useEffect(() => {
@@ -164,57 +164,67 @@ export function Dashboard() {
   
   const handleOrderSubmit = useCallback((newOrderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
     let success = false;
-    startTransition(() => {
-      try {
+    let toastMessage = {}
+    
+    try {
         const productsToUpdate: Product[] = [];
-        const tempProducts = JSON.parse(JSON.stringify(products));
+        let tempProducts = [...products];
 
         for (const item of newOrderData.items) {
           const productIndex = tempProducts.findIndex((p: Product) => p.id === item.productId);
           if (productIndex === -1 || tempProducts[productIndex].quantity < item.quantity) {
              throw new Error(`Estoque insuficiente para ${item.productName}. Disponível: ${tempProducts[productIndex]?.quantity ?? 0}`);
           }
-          tempProducts[productIndex].quantity -= item.quantity;
-          productsToUpdate.push(tempProducts[productIndex]);
+           const newQuantity = tempProducts[productIndex].quantity - item.quantity;
+           const productToUpdate = { ...tempProducts[productIndex], quantity: newQuantity };
+           
+           tempProducts = [
+                ...tempProducts.slice(0, productIndex),
+                productToUpdate,
+                ...tempProducts.slice(productIndex + 1),
+           ];
+          productsToUpdate.push(productToUpdate);
         }
 
-        setProducts(tempProducts);
-        
         const newOrder = { 
           ...newOrderData, 
           id: uuidv4(), 
           createdAt: new Date().toISOString(),
           status: 'Pendente' as const
         };
-        setOrders(prev => [newOrder, ...prev]);
         
-        setProductsToRefresh(productsToUpdate);
-
-        setRegisterOrderSheetOpen(false);
+        startTransition(() => {
+            setProducts(tempProducts);
+            setOrders(prev => [newOrder, ...prev]);
+            setProductsToRefresh(productsToUpdate);
+            setRegisterOrderSheetOpen(false);
+        });
+        
         success = true;
       } catch (error) {
         console.error("Failed to register order:", error);
         const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
-        toast({
+        toastMessage = {
             variant: "destructive",
             title: "Erro ao Registrar Pedido",
             description: errorMessage,
-        });
+        };
       }
-    });
 
     if (success) {
-        toast({
+        toastMessage = {
           title: "Pedido Registrado!",
           description: "O novo pedido foi criado e o estoque foi atualizado.",
-        });
+        };
     }
+    toast(toastMessage);
   }, [products, setProducts, setOrders, toast]);
 
   const handleOrderUpdate = useCallback((updatedOrderData: Order) => {
     let success = false;
-    startTransition(() => {
-      try {
+    let toastMessage = {};
+    
+    try {
         const originalOrder = orders.find(o => o.id === updatedOrderData.id);
         if (!originalOrder) {
           throw new Error("Pedido original não encontrado.");
@@ -222,17 +232,15 @@ export function Dashboard() {
 
         const stockAdjustments: { [productId: string]: number } = {};
         
-        // Add back items from the original order to create a net change
         for (const item of originalOrder.items) {
             stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
         }
         
-        // Subtract new items from stock
         for (const item of updatedOrderData.items) {
             stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) - item.quantity;
         }
 
-        const tempProducts = JSON.parse(JSON.stringify(products));
+        let tempProducts = [...products];
         const productsToUpdate: Product[] = [];
 
         for(const productId in stockAdjustments) {
@@ -241,54 +249,67 @@ export function Dashboard() {
                 const productName = updatedOrderData.items.find(i => i.productId === productId)?.productName || 'Produto desconhecido';
                 throw new Error(`Produto ${productName} não encontrado no inventário.`);
             }
-            if (tempProducts[productIndex].quantity + stockAdjustments[productId] < 0) {
+            const newQuantity = tempProducts[productIndex].quantity + stockAdjustments[productId];
+            if (newQuantity < 0) {
                  throw new Error(`Estoque insuficiente para ${tempProducts[productIndex].name}.`);
             }
-            tempProducts[productIndex].quantity += stockAdjustments[productId];
-            productsToUpdate.push(tempProducts[productIndex]);
+            const productToUpdate = { ...tempProducts[productIndex], quantity: newQuantity };
+            tempProducts = [
+                ...tempProducts.slice(0, productIndex),
+                productToUpdate,
+                ...tempProducts.slice(productIndex + 1),
+           ];
+            productsToUpdate.push(productToUpdate);
         }
-
-        setProducts(tempProducts);
-        setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
         
-        setProductsToRefresh(productsToUpdate);
-
-        setSelectedOrderForEdit(null);
+        startTransition(() => {
+            setProducts(tempProducts);
+            setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrderData.id ? updatedOrderData : o));
+            setProductsToRefresh(productsToUpdate);
+            setSelectedOrderForEdit(null);
+        });
         success = true;
        } catch (error) {
          console.error("Failed to update order:", error);
          const errorMessage = error instanceof Error ? error.message : "Tente novamente.";
-         toast({
+         toastMessage = {
             variant: "destructive",
             title: "Erro ao Atualizar Pedido",
             description: errorMessage,
-        });
+        };
       }
-    });
 
     if (success) {
-      toast({
+      toastMessage = {
         title: "Pedido Atualizado!",
         description: "O pedido foi atualizado e o estoque foi ajustado.",
-      });
+      };
     }
+    toast(toastMessage);
   }, [products, orders, setProducts, setOrders, toast]);
 
   const handleDeleteOrder = useCallback((orderId: string) => {
-    let orderToDelete: Order | undefined;
+    const orderToDelete = orders.find(o => o.id === orderId);
+    if (!orderToDelete) {
+        toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+        return;
+    }
+    
     startTransition(() => {
-        orderToDelete = orders.find(o => o.id === orderId);
-        if (!orderToDelete) return;
-
         const productsToUpdate: Product[] = [];
-        // Only return items to stock if the order wasn't completed
         if (orderToDelete.status === 'Pendente') {
-            const tempProducts = JSON.parse(JSON.stringify(products));
+            let tempProducts = [...products];
             for (const item of orderToDelete.items) {
                 const productIndex = tempProducts.findIndex((p: Product) => p.id === item.productId);
                 if (productIndex !== -1) {
-                    tempProducts[productIndex].quantity += item.quantity;
-                    productsToUpdate.push(tempProducts[productIndex]);
+                    const newQuantity = tempProducts[productIndex].quantity + item.quantity;
+                    const productToUpdate = { ...tempProducts[productIndex], quantity: newQuantity };
+                    tempProducts = [
+                        ...tempProducts.slice(0, productIndex),
+                        productToUpdate,
+                        ...tempProducts.slice(productIndex + 1),
+                    ];
+                    productsToUpdate.push(productToUpdate);
                 }
             }
             setProducts(tempProducts);
@@ -302,15 +323,12 @@ export function Dashboard() {
 
         setSelectedOrderForDelete(null);
     });
+    
+    toast({
+        title: "Pedido Excluído!",
+        description: "O pedido foi removido e os itens retornaram ao estoque.",
+    });
 
-    if (orderToDelete) {
-      toast({
-          title: "Pedido Excluído!",
-          description: "O pedido foi removido e os itens retornaram ao estoque.",
-      });
-    } else {
-      toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-    }
   }, [orders, products, setOrders, setProducts, toast]);
   
   const handleOpenCompleteDialog = useCallback((order: Order) => {
@@ -319,41 +337,52 @@ export function Dashboard() {
   }, []);
   
  const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
-    setOrders(prevOrders => {
-      const orderIndex = prevOrders.findIndex(o => o.id === orderId);
-      if (orderIndex === -1) {
-        toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
-        return prevOrders;
-      }
-      
-      const originalOrder = prevOrders[orderIndex];
-      // Create a new date string for the note
-      const notePrefix = `Anotação (${new Date().toLocaleString('pt-BR')}):`;
-      const newNoteContent = note ? `${notePrefix}\n${note}` : '';
-      
-      // Append new note to existing notes
-      const newNotes = newNoteContent
-        ? (originalOrder.notes ? `${originalOrder.notes}\n\n${newNoteContent}` : newNoteContent)
-        : originalOrder.notes;
+    let orderExists = false;
+    let toastMessage = {};
 
-      const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
-      const tempOrders = [...prevOrders];
-      tempOrders[orderIndex] = updatedOrder;
-      
-      const productsToUpdate = products.filter(p => 
-          updatedOrder.items.some(item => item.productId === p.id)
-      );
-      if (productsToUpdate.length > 0) {
-        setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
-      }
-      
-      toast({
+    startTransition(() => {
+      setOrders(prevOrders => {
+        const orderIndex = prevOrders.findIndex(o => o.id === orderId);
+        if (orderIndex === -1) {
+          orderExists = false;
+          return prevOrders;
+        }
+        orderExists = true;
+        
+        const originalOrder = prevOrders[orderIndex];
+        const notePrefix = `Anotação (${new Date().toLocaleString('pt-BR')}):`;
+        const newNoteContent = note ? `${notePrefix}\n${note}` : '';
+        
+        const newNotes = newNoteContent
+          ? (originalOrder.notes ? `${originalOrder.notes}\n\n${newNoteContent}` : newNoteContent)
+          : originalOrder.notes;
+
+        const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
+        
+        const tempOrders = [...prevOrders];
+        tempOrders[orderIndex] = updatedOrder;
+        
+        const productsToUpdate = products.filter(p => 
+            updatedOrder.items.some(item => item.productId === p.id)
+        );
+        if (productsToUpdate.length > 0) {
+          setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
+        }
+        
+        return tempOrders;
+      });
+    });
+
+    if (!orderExists) {
+        toastMessage = { variant: "destructive", title: "Erro", description: "Pedido não encontrado." };
+    } else {
+        toastMessage = {
           title: "Status do Pedido Alterado!",
           description: `O pedido foi atualizado para "${newStatus}".`,
-      });
+        };
+    }
+    toast(toastMessage);
 
-      return tempOrders;
-    });
   }, [products, setOrders, toast]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
@@ -679,4 +708,6 @@ export function Dashboard() {
 }
 
     
+    
+
     
