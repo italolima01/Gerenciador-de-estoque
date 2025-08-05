@@ -25,7 +25,7 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { EditOrderSheet } from './edit-order-sheet';
-import { DeleteOrderDialog as CancelOrderDialog } from './cancel-order-dialog';
+import { DeleteOrderDialog } from './cancel-order-dialog';
 import { ConfirmCompletionDialog } from './confirm-completion-dialog';
 import { AddNoteDialog } from './add-note-dialog';
 import { RegisterOrderSheet } from './register-order-sheet';
@@ -107,8 +107,7 @@ export function Dashboard() {
     if (products.length > 0 && !isLoading) {
       fetchProductAlerts(products);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, isLoading]);
+  }, [products, isLoading, fetchProductAlerts]);
 
   // Fetch alerts for specific products when they need a refresh
   useEffect(() => {
@@ -661,7 +660,7 @@ export function Dashboard() {
       )}
 
       {selectedOrderForDelete && (
-        <CancelOrderDialog
+        <DeleteOrderDialog
           order={selectedOrderForDelete}
           isOpen={!!selectedOrderForDelete}
           onOpenChange={() => setSelectedOrderForDelete(null)}
