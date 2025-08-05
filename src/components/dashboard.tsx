@@ -99,7 +99,7 @@ export function Dashboard() {
             // });
         }
     });
-}, [orders]);
+}, [orders, startTransition]);
 
 
   // Initial fetch for all products
@@ -108,7 +108,7 @@ export function Dashboard() {
       fetchProductAlerts(products);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, isLoading, fetchProductAlerts]);
+  }, [products, isLoading]);
 
   // Fetch alerts for specific products when they need a refresh
   useEffect(() => {
@@ -337,19 +337,18 @@ export function Dashboard() {
   }, []);
   
  const handleChangeOrderStatus = useCallback((orderId: string, newStatus: Order['status'], note?: string) => {
-    let orderExists = false;
-    let toastMessage = {};
+    const orderIndex = orders.findIndex(o => o.id === orderId);
+
+    if (orderIndex === -1) {
+      toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
+      return;
+    }
 
     startTransition(() => {
       setOrders(prevOrders => {
-        const orderIndex = prevOrders.findIndex(o => o.id === orderId);
-        if (orderIndex === -1) {
-          orderExists = false;
-          return prevOrders;
-        }
-        orderExists = true;
+        const tempOrders = [...prevOrders];
+        const originalOrder = tempOrders[orderIndex];
         
-        const originalOrder = prevOrders[orderIndex];
         const notePrefix = `Anotação (${new Date().toLocaleString('pt-BR')}):`;
         const newNoteContent = note ? `${notePrefix}\n${note}` : '';
         
@@ -358,8 +357,6 @@ export function Dashboard() {
           : originalOrder.notes;
 
         const updatedOrder = { ...originalOrder, status: newStatus, notes: newNotes };
-        
-        const tempOrders = [...prevOrders];
         tempOrders[orderIndex] = updatedOrder;
         
         const productsToUpdate = products.filter(p => 
@@ -373,17 +370,12 @@ export function Dashboard() {
       });
     });
 
-    if (!orderExists) {
-        toastMessage = { variant: "destructive", title: "Erro", description: "Pedido não encontrado." };
-    } else {
-        toastMessage = {
-          title: "Status do Pedido Alterado!",
-          description: `O pedido foi atualizado para "${newStatus}".`,
-        };
-    }
-    toast(toastMessage);
+    toast({
+      title: "Status do Pedido Alterado!",
+      description: `O pedido foi atualizado para "${newStatus}".`,
+    });
 
-  }, [products, setOrders, toast]);
+  }, [orders, products, setOrders, toast]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
     if (!orderToComplete) return;
