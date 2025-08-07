@@ -60,19 +60,18 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // Initialize with default empty values to prevent uncontrolled -> controlled error
     defaultValues: {
-      name: '',
-      packType: '',
-      unitsPerPack: 1,
-      packQuantity: 0,
-      price: '',
-      expirationDate: new Date(),
+      name: product?.name || '',
+      packType: product?.packType || '',
+      unitsPerPack: product?.unitsPerPack || 1,
+      packQuantity: product?.packQuantity || 0,
+      price: formatPriceForInput(product?.price) || '',
+      expirationDate: product?.expirationDate ? parseISO(product.expirationDate) : new Date(),
     },
   });
   
   React.useEffect(() => {
-    if (isOpen && product) {
+    if (product) {
       form.reset({
         name: product.name,
         packType: product.packType,
@@ -82,7 +81,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
         expirationDate: parseISO(product.expirationDate),
       });
     }
-  }, [isOpen, product, form]);
+  }, [product, form]);
 
   function onSubmit(values: FormValues) {
     const priceAsString = values.price || '';
