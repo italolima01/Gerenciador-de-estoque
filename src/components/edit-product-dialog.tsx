@@ -50,7 +50,8 @@ interface EditProductDialogProps {
   isPending: boolean;
 }
 
-const formatPriceForInput = (price: number): string => {
+const formatPriceForInput = (price?: number): string => {
+    if (price === undefined || price === null) return '';
     return price.toFixed(2).replace('.', ',');
 }
 
@@ -59,18 +60,19 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    // Initialize with default empty values to prevent uncontrolled -> controlled error
     defaultValues: {
-      name: product.name,
-      packType: product.packType,
-      unitsPerPack: product.unitsPerPack,
-      packQuantity: product.packQuantity,
-      price: formatPriceForInput(product.price),
-      expirationDate: parseISO(product.expirationDate),
+      name: '',
+      packType: '',
+      unitsPerPack: 1,
+      packQuantity: 0,
+      price: '',
+      expirationDate: new Date(),
     },
   });
   
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && product) {
       form.reset({
         name: product.name,
         packType: product.packType,
