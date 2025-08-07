@@ -86,17 +86,19 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
   const displayVariant = quantityZone.variant;
 
   const getStockDisplay = () => {
-    if (product.unitsPerPack <= 1) {
-      return <p className="text-2xl font-bold">{product.quantity}</p>;
+    const { quantity, unitsPerPack, packType } = product;
+    if (!unitsPerPack || unitsPerPack <= 1) {
+      return <p className="text-2xl font-bold">{quantity} <span className="text-base font-normal text-muted-foreground">unidades</span></p>;
     }
-    const fullPacks = Math.floor(product.quantity / product.unitsPerPack);
-    const looseUnits = product.quantity % product.unitsPerPack;
+    
+    const fullPacks = Math.floor(quantity / unitsPerPack);
+    const looseUnits = quantity % unitsPerPack;
     
     return (
       <div>
-        <p className="text-2xl font-bold">{fullPacks} <span className="text-base font-normal text-muted-foreground">{product.packType}s</span></p>
+        <p className="text-2xl font-bold">{fullPacks} <span className="text-base font-normal text-muted-foreground">{packType}(s)</span></p>
         {looseUnits > 0 && (
-          <p className="text-sm font-medium text-muted-foreground">+ {looseUnits} unidades</p>
+          <p className="text-sm font-medium text-muted-foreground">+ {looseUnits} unidade(s)</p>
         )}
       </div>
     )
