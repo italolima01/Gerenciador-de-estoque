@@ -83,6 +83,11 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
               <div className="text-sm text-muted-foreground md:hidden">
                 {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
               </div>
+               <div className="sm:hidden mt-1">
+                 <Badge variant={statusVariantMap[order.status]}>
+                    {order.status}
+                </Badge>
+              </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
                 {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
