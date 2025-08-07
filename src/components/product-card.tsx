@@ -85,6 +85,23 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
   const displayZone = isAlertLoading ? quantityZone.zone : product.zone;
   const displayVariant = quantityZone.variant;
 
+  const getStockDisplay = () => {
+    if (product.unitsPerPack <= 1) {
+      return <p className="text-2xl font-bold">{product.quantity}</p>;
+    }
+    const fullPacks = Math.floor(product.quantity / product.unitsPerPack);
+    const looseUnits = product.quantity % product.unitsPerPack;
+    
+    return (
+      <div>
+        <p className="text-2xl font-bold">{fullPacks} <span className="text-base font-normal text-muted-foreground">{product.packType}s</span></p>
+        {looseUnits > 0 && (
+          <p className="text-sm font-medium text-muted-foreground">+ {looseUnits} unidades</p>
+        )}
+      </div>
+    )
+  }
+
 
   return (
     <Card 
@@ -102,7 +119,7 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
                 </Badge>
               )}
             </div>
-            <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)}</p>
+            <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)} / unidade</p>
         </div>
       </CardHeader>
       <CardContent className="flex-grow p-4 pt-0" onClick={onAlertClick}>
@@ -113,7 +130,7 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>
             <p className="text-sm text-muted-foreground">Em estoque</p>
-            <p className="text-2xl font-bold">{product.quantity}</p>
+            {getStockDisplay()}
         </div>
         
         <DropdownMenu>

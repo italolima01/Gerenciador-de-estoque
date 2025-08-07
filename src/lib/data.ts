@@ -5,6 +5,9 @@ export const products: Product[] = [
   {
     id: 'prod_001',
     name: 'Vinho Tinto Cabernet',
+    packType: 'Caixa',
+    unitsPerPack: 6,
+    packQuantity: 5,
     quantity: 30,
     price: 75.50,
     expirationDate: '2025-12-20',
@@ -12,6 +15,9 @@ export const products: Product[] = [
   {
     id: 'prod_002',
     name: 'Cerveja Artesanal IPA',
+    packType: 'Fardo',
+    unitsPerPack: 12,
+    packQuantity: 12,
     quantity: 150,
     price: 12.99,
     expirationDate: '2024-11-15',
@@ -19,6 +25,9 @@ export const products: Product[] = [
   {
     id: 'prod_003',
     name: 'Whisky Escocês 12 Anos',
+    packType: 'Caixa',
+    unitsPerPack: 1,
+    packQuantity: 15,
     quantity: 15,
     price: 189.90,
     expirationDate: '2030-01-01',
@@ -26,6 +35,9 @@ export const products: Product[] = [
   {
     id: 'prod_004',
     name: 'Refrigerante de Cola',
+    packType: 'Fardo',
+    unitsPerPack: 6,
+    packQuantity: 3,
     quantity: 20,
     price: 5.00,
     expirationDate: '2024-10-30',
@@ -33,6 +45,9 @@ export const products: Product[] = [
   {
     id: 'prod_005',
     name: 'Água Mineral com Gás',
+    packType: 'Fardo',
+    unitsPerPack: 12,
+    packQuantity: 16,
     quantity: 200,
     price: 3.50,
     expirationDate: '2025-08-01',
@@ -40,6 +55,9 @@ export const products: Product[] = [
   {
     id: 'prod_006',
     name: 'Suco de Laranja Integral',
+    packType: 'Caixa',
+    unitsPerPack: 8,
+    packQuantity: 5,
     quantity: 40,
     price: 8.75,
     expirationDate: '2024-09-10',
@@ -47,6 +65,9 @@ export const products: Product[] = [
     {
     id: 'prod_007',
     name: 'Vodka Premium',
+    packType: 'Caixa',
+    unitsPerPack: 1,
+    packQuantity: 25,
     quantity: 25,
     price: 95.00,
     expirationDate: '2028-06-01',
@@ -54,6 +75,9 @@ export const products: Product[] = [
   {
     id: 'prod_008',
     name: 'Champanhe Brut',
+    packType: 'Caixa',
+    unitsPerPack: 1,
+    packQuantity: 10,
     quantity: 10,
     price: 250.00,
     expirationDate: '2026-05-20',

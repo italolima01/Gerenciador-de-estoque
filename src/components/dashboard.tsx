@@ -1,4 +1,5 @@
 
+
       
 'use client';
 
@@ -118,9 +119,10 @@ export function Dashboard() {
   }, [productsToRefresh, fetchProductAlerts]);
 
 
-  const handleAddProduct = useCallback((newProductData: Omit<Product, 'id'>) => {
+  const handleAddProduct = useCallback((newProductData: Omit<Product, 'id' | 'quantity'>) => {
     startTransition(() => {
-      const newProduct = { ...newProductData, id: uuidv4() };
+      const quantity = newProductData.packQuantity * newProductData.unitsPerPack;
+      const newProduct = { ...newProductData, id: uuidv4(), quantity };
       const updatedProducts = [newProduct, ...products];
       setProducts(updatedProducts);
       setProductsToRefresh([newProduct]);
@@ -134,13 +136,15 @@ export function Dashboard() {
 
   const handleEditProduct = useCallback((updatedProductData: Product) => {
     startTransition(() => {
-      const updatedProducts = products.map(p => p.id === updatedProductData.id ? updatedProductData : p)
+      const quantity = updatedProductData.packQuantity * updatedProductData.unitsPerPack;
+      const productWithTotalQuantity = { ...updatedProductData, quantity };
+      const updatedProducts = products.map(p => p.id === productWithTotalQuantity.id ? productWithTotalQuantity : p)
       setProducts(updatedProducts);
-      setProductsToRefresh([updatedProductData]);
+      setProductsToRefresh([productWithTotalQuantity]);
       setSelectedProductForEdit(null);
        toast({
           title: "Produto Atualizado!",
-          description: `"${updatedProductData.name}" foi atualizado com sucesso.`,
+          description: `"${productWithTotalQuantity.name}" foi atualizado com sucesso.`,
       });
     });
   }, [products, setProducts, toast]);

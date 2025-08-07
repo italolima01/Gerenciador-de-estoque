@@ -2,8 +2,11 @@
 export type Product = {
   id: string;
   name: string;
-  quantity: number;
-  price: number;
+  packType: string; // e.g., 'Caixa', 'Fardo'
+  unitsPerPack: number;
+  packQuantity: number;
+  quantity: number; // Total individual units (packQuantity * unitsPerPack)
+  price: number; // Price per individual unit
   expirationDate: string; // YYYY-MM-DD
 };
 
