@@ -497,7 +497,7 @@ export function Dashboard() {
             <TabsList>
               <TabsTrigger value="orders">Pedidos</TabsTrigger>
               <TabsTrigger value="inventory">Estoque</TabsTrigger>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="dashboard">Vendas</TabsTrigger>
             </TabsList>
              <div className='sm:hidden flex items-center gap-2'>
                  {mobileHeaderButton}
