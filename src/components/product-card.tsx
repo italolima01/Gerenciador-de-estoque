@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreVertical, Trash2, Loader2, Edit } from 'lucide-react';
+import { MoreVertical, Trash2, Edit } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 import type { ProductWithStatus } from '@/lib/types';
@@ -46,25 +46,19 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-function getExpirationInfo(expirationDate: string): { color: string; text: string } {
+function getExpirationInfo(expirationDate: string): { variant: BadgeProps['variant']; text: string } {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Compare dates only, not time
     const expiry = parseISO(expirationDate);
     const daysUntilExpiration = differenceInDays(expiry, today);
 
     if (daysUntilExpiration < 0) {
-        return { color: 'text-destructive', text: 'Vencido' };
-    }
-
-    const formattedDate = new Date(expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-
-    if (daysUntilExpiration <= 14) {
-        return { color: 'text-destructive', text: `Vencimento: ${formattedDate}` };
+        return { variant: 'destructive', text: 'Vencido' };
     }
     if (daysUntilExpiration <= 30) {
-        return { color: 'text-yellow-600', text: `Vencimento: ${formattedDate}` };
+        return { variant: 'warning', text: 'Vence em breve' };
     }
-    return { color: 'text-green-600', text: `Vencimento: ${formattedDate}` };
+    return { variant: 'outline', text: `Vence em ${new Date(expirationDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}` };
 }
 
 function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green'; variant: BadgeProps['variant'] } {
@@ -72,7 +66,7 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
         return { zone: 'red', variant: 'destructive' };
     }
     if (quantity <= 50) {
-        return { zone: 'yellow', variant: 'secondary' };
+        return { zone: 'yellow', variant: 'warning' };
     }
     return { zone: 'green', variant: 'success' };
 }
@@ -80,10 +74,7 @@ function getZoneForQuantity(quantity: number): { zone: 'red' | 'yellow' | 'green
 
 export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick, isAlertLoading }: ProductCardProps) {
   const expirationInfo = getExpirationInfo(product.expirationDate);
-  
   const quantityZone = getZoneForQuantity(product.quantity);
-  const displayZone = isAlertLoading ? quantityZone.zone : product.zone;
-  const displayVariant = quantityZone.variant;
 
   const getStockDisplay = () => {
     const { quantity, unitsPerPack, packType } = product;
@@ -107,27 +98,24 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
 
   return (
     <Card 
-        className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+        className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1 hover:border-primary/20"
+        onClick={onAlertClick}
     >
-      <CardHeader className="flex flex-row items-start p-4 pb-2" onClick={onAlertClick}>
+      <CardHeader className="flex flex-row items-start p-4 pb-2">
         <div className="flex-grow">
             <div className="flex items-start justify-between">
-            <CardTitle className="font-headline text-lg leading-tight">{product.name}</CardTitle>
-              {isAlertLoading ? (
-                 <Skeleton className="h-6 w-20 rounded-full" />
-              ) : (
-                <Badge variant={displayVariant} className="capitalize shrink-0">
+                <CardTitle className="font-headline text-lg leading-tight mb-1">{product.name}</CardTitle>
+                <Badge variant={quantityZone.variant} className="capitalize shrink-0">
                     {zoneTextMap[quantityZone.zone]}
                 </Badge>
-              )}
             </div>
-            <p className="mt-1 font-semibold text-primary">{formatCurrency(product.price)} / unidade</p>
+            <p className="font-semibold text-primary">{formatCurrency(product.price)} / unidade</p>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow p-4 pt-0" onClick={onAlertClick}>
-        <CardDescription className={cn("font-medium", expirationInfo.color)}>
+      <CardContent className="flex-grow p-4 pt-0">
+        <Badge variant={expirationInfo.variant} className="font-medium">
             {expirationInfo.text}
-        </CardDescription>
+        </Badge>
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-muted/50 p-4">
         <div>
