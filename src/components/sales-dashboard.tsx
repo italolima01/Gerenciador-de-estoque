@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { subDays, startOfDay, parseISO, subMonths } from 'date-fns';
+import { subDays, parseISO, subMonths, isSameDay, isSameMonth } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from './ui/skeleton';
+import { SalesDetailDialog } from './sales-detail-dialog';
 
 interface SalesDashboardProps {
     orders: Order[];
@@ -53,6 +54,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 
 export function SalesDashboard({ orders, products, isLoading }: SalesDashboardProps) {
+    const [detailOrders, setDetailOrders] = React.useState<Order[] | null>(null);
+    const [detailTitle, setDetailTitle] = React.useState('');
 
     const salesData = React.useMemo(() => {
         const timeZone = 'America/Sao_Paulo';
@@ -83,6 +86,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             const label = format(date, 'dd/MM', { timeZone, locale: ptBR });
             weeklyChartData.push({
                 date: label,
+                fullDate: date,
                 total: weeklySalesMap.get(dateKey) || 0
             });
         }
@@ -103,14 +107,36 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             const label = format(date, 'MMMM', { locale: ptBR, timeZone }).replace(/^\w/, (c) => c.toUpperCase());
              monthlyChartData.push({
                 month: label,
+                fullDate: date,
                 total: monthlySalesMap.get(monthKey) || 0
             });
         }
 
 
-        return { weeklyChartData, monthlyChartData };
+        return { weeklyChartData, monthlyChartData, completedOrders };
 
     }, [orders, products]);
+
+
+    const handleBarClick = (data: any, type: 'day' | 'month') => {
+        if (!data || !data.activePayload || data.activePayload.length === 0) {
+            return;
+        }
+
+        const payload = data.activePayload[0].payload;
+        const clickedDate = payload.fullDate;
+        
+        let filteredOrders: Order[] = [];
+        if (type === 'day') {
+            setDetailTitle(`Vendas de ${payload.date}`);
+            filteredOrders = salesData.completedOrders.filter(order => isSameDay(parseISO(order.createdAt), clickedDate));
+        } else {
+            setDetailTitle(`Vendas de ${payload.month}`);
+            filteredOrders = salesData.completedOrders.filter(order => isSameMonth(parseISO(order.createdAt), clickedDate));
+        }
+        
+        setDetailOrders(filteredOrders);
+    };
 
     if (isLoading) {
         return (
@@ -138,19 +164,20 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
     }
     
     return (
+        <>
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
                 <CardHeader>
                     <CardTitle>Vendas da Última Semana</CardTitle>
-                    <CardDescription>Total de vendas nos últimos 7 dias.</CardDescription>
+                    <CardDescription>Total de vendas nos últimos 7 dias. Clique em uma barra para ver detalhes.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={salesData.weeklyChartData}>
+                        <BarChart data={salesData.weeklyChartData} onClick={(data) => handleBarClick(data, 'day')}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} />
                             <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', radius: 4 }} />
                             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -159,20 +186,28 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
              <Card>
                 <CardHeader>
                     <CardTitle>Vendas dos Últimos 12 Meses</CardTitle>
-                    <CardDescription>Total de vendas consolidadas por mês.</CardDescription>
+                    <CardDescription>Total de vendas consolidadas por mês. Clique em uma barra para ver detalhes.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={salesData.monthlyChartData}>
+                        <BarChart data={salesData.monthlyChartData} onClick={(data) => handleBarClick(data, 'month')}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
                             <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }}/>
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}/>
                             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
         </div>
+        <SalesDetailDialog 
+            isOpen={!!detailOrders}
+            onOpenChange={(isOpen) => { if (!isOpen) setDetailOrders(null) }}
+            orders={detailOrders || []}
+            products={products}
+            title={detailTitle}
+        />
+        </>
     );
 }

@@ -107,7 +107,8 @@ export function Dashboard() {
     if (products.length > 0 && !isLoading) {
       fetchProductAlerts(products);
     }
-  }, [products, isLoading, fetchProductAlerts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length, isLoading]);
 
   // Fetch alerts for specific products when they need a refresh
   useEffect(() => {
@@ -700,8 +701,3 @@ export function Dashboard() {
     </>
   );
 }
-
-    
-    
-
-    
