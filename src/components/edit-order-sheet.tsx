@@ -262,7 +262,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                           
                         return (
                             <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
-                               <div className="flex-1 grid grid-cols-[1fr_auto_auto] gap-4 items-center">
+                               <div className="flex-1 grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
                                   <div>
                                     <p className="font-semibold">{selectedProduct?.name}</p>
                                     <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>

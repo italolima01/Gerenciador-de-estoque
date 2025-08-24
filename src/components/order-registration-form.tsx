@@ -256,7 +256,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       
                     return (
                         <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
-                           <div className="flex-1 grid grid-cols-[1fr_auto] gap-4 items-center">
+                           <div className="flex-1 grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
                                 <div>
                                     <p className="font-semibold">{selectedProduct?.name}</p>
                                     <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
@@ -280,10 +280,10 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     </FormItem>
                                     )}
                                 />
-                            </div>
-                             <div className="w-32 text-right">
-                                <FormLabel>Subtotal</FormLabel>
-                                <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
+                                <div className="w-32 text-right hidden sm:block">
+                                    <FormLabel>Subtotal</FormLabel>
+                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
+                                </div>
                             </div>
                             <Button
                                 type="button"
