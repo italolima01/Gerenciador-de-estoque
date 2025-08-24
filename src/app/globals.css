@@ -6,9 +6,9 @@
   :root {
     --background: 0 20% 94%; /* Off-white - #F2EBEB */
     --foreground: 0 0% 3.9%;
-    --card: 0 20% 94%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
-    --popover: 0 20% 94%;
+    --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
     --primary: 345 100% 25%; /* Deep burgundy - #800020 */
     --primary-foreground: 0 0% 98%;
