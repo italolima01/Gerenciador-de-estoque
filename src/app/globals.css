@@ -5,11 +5,11 @@
 @layer base {
   :root {
     --background: 210 40% 98%; /* #F9FAFB */
-    --foreground: 224 71.4% 4.1%;
+    --foreground: 0 0% 0%; /* Black */
     --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
+    --card-foreground: 0 0% 0%; /* Black */
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
+    --popover-foreground: 0 0% 0%; /* Black */
     --primary: 0 72% 42%; /* #B91C1C */
     --primary-foreground: 0 0% 98%;
     --secondary: 215 14% 28%; /* #374151 */
@@ -17,7 +17,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 0 0% 0%; /* Black */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --success: 142.1 76.2% 36.3%; /* #10B981 */
@@ -73,10 +73,10 @@
 /* Custom font styles */
 @layer base {
     h1, h2, h3, h4, h5, h6, .font-headline {
-        @apply text-slate-900;
+        @apply text-foreground;
     }
     body, p, span, div {
-        @apply text-gray-800;
+        @apply text-foreground;
     }
     .text-muted-foreground {
         @apply text-gray-600;
