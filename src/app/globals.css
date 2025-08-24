@@ -69,29 +69,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-/* Custom font styles */
-@layer base {
-    h1, h2, h3, h4, h5, h6, .font-headline {
-        @apply text-foreground;
-    }
-    body, p, span, div {
-        @apply text-foreground;
-    }
-    .text-muted-foreground {
-        @apply text-gray-600;
-    }
-}
-.dark {
-    @layer base {
-        h1, h2, h3, h4, h5, h6, .font-headline {
-            @apply text-gray-50;
-        }
-        body, p, span, div {
-            @apply text-gray-300;
-        }
-        .text-muted-foreground {
-            @apply text-gray-400;
-        }
-    }
-}
