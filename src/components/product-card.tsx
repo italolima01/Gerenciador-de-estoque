@@ -107,7 +107,7 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
 
   return (
     <Card 
-        className="flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer"
+        className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 cursor-pointer"
     >
       <CardHeader className="flex flex-row items-start p-4 pb-2" onClick={onAlertClick}>
         <div className="flex-grow">
