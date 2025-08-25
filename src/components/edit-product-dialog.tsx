@@ -147,13 +147,11 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
     let value = e.target.value;
     value = value.replace(/\D/g, '');
     
-    // Pad with zeros if necessary
-    if (value.length < 3) {
-      value = value.padStart(3, '0');
-    }
+    // Convert to number, divide by 100, then format back to string.
+    // This avoids padding with zeros and handles decimal insertion correctly.
+    const numericValue = (parseInt(value, 10) / 100).toFixed(2);
+    value = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(parseFloat(numericValue));
 
-    value = value.replace(/(\d{1,})(\d{2})$/, '$1,$2');
-    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
     fieldChange(value);
   };
   

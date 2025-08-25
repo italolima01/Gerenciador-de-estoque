@@ -122,8 +122,11 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (value: string) => void) => {
     let value = e.target.value;
     value = value.replace(/\D/g, '');
-    value = value.replace(/(\d{1,})(\d{2})$/, '$1,$2');
-    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+
+    // Convert to number, divide by 100, then format back to string.
+    const numericValue = (parseInt(value, 10) / 100).toFixed(2);
+    value = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(parseFloat(numericValue));
+
     fieldChange(value);
   };
   
