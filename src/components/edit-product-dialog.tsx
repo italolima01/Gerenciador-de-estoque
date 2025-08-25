@@ -164,8 +164,17 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
   const watchedPackType = form.watch('packType');
 
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (date?: Date) => void) => {
-    const value = e.target.value;
+    let value = e.target.value.replace(/\D/g, '');
+
+    if (value.length > 2) {
+      value = `${value.slice(0, 2)}/${value.slice(2)}`;
+    }
+    if (value.length > 5) {
+      value = `${value.slice(0, 5)}/${value.slice(5, 9)}`;
+    }
+
     setDateInput(value);
+
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
         const date = parse(value, 'dd/MM/yyyy', new Date());
         if (!isNaN(date.getTime())) {
