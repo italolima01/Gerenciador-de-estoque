@@ -293,7 +293,7 @@ export function Dashboard() {
 
             const orderToUpdate = { ...originalOrder, status: newStatus, notes: newNotes };
 
-            const updatedOrder = await updateOrder(orderToUpdate, false); // No stock change
+            const { updatedOrder } = await updateOrder(orderToUpdate, false); // No stock change
             
             setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
             
