@@ -73,6 +73,8 @@ interface AddProductDialogProps {
 
 export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending }: AddProductDialogProps) {
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
+  const [dateInput, setDateInput] = React.useState('');
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
@@ -83,6 +85,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
         name: '',
         packType: undefined,
       });
+      setDateInput('');
     }
   }, [isOpen, form]);
 
@@ -135,6 +138,32 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   };
   
   const watchedPackType = form.watch('packType');
+  
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (date?: Date) => void) => {
+    const value = e.target.value;
+    setDateInput(value);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        const date = parse(value, 'dd/MM/yyyy', new Date());
+        if (!isNaN(date.getTime())) {
+            fieldChange(date);
+        } else {
+            fieldChange(undefined);
+        }
+    } else {
+        fieldChange(undefined);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined, fieldChange: (date?: Date) => void) => {
+      if(date) {
+        fieldChange(date);
+        setDateInput(format(date, 'dd/MM/yyyy'));
+        setCalendarOpen(false);
+      } else {
+        fieldChange(undefined);
+        setDateInput('');
+      }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -280,15 +309,8 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       <FormControl>
                         <Input
                           placeholder="dd/mm/aaaa"
-                          value={field.value ? format(field.value, 'dd/MM/yyyy') : ''}
-                          onChange={(e) => {
-                            const date = parse(e.target.value, 'dd/MM/yyyy', new Date());
-                            if (!isNaN(date.getTime())) {
-                              field.onChange(date);
-                            } else {
-                              field.onChange(undefined);
-                            }
-                          }}
+                          value={dateInput}
+                          onChange={(e) => handleDateInputChange(e, field.onChange)}
                           className="pr-8"
                         />
                       </FormControl>
@@ -310,10 +332,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                         fromDate={new Date()}
                         toDate={addYears(new Date(), 10)}
                         selected={field.value}
-                        onSelect={(date) => {
-                          if (date) field.onChange(date);
-                          setCalendarOpen(false);
-                        }}
+                        onSelect={(date) => handleDateSelect(date, field.onChange)}
                         disabled={(date) => date < new Date()}
                         initialFocus
                       />

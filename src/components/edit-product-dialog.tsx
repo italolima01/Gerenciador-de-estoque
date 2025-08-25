@@ -80,6 +80,7 @@ const formatPriceForInput = (price?: number): string => {
 
 export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit, isPending }: EditProductDialogProps) {
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
+  const [dateInput, setDateInput] = React.useState('');
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -87,13 +88,16 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
   
   React.useEffect(() => {
     if (product && isOpen) {
+        const expirationDate = parseISO(product.expirationDate);
+        setDateInput(format(expirationDate, 'dd/MM/yyyy'));
+
       if (product.packType === 'Unidade') {
         form.reset({
           packType: 'Unidade',
           name: product.name,
           quantity: product.quantity,
           price: formatPriceForInput(product.price),
-          expirationDate: parseISO(product.expirationDate),
+          expirationDate,
         });
       } else {
         form.reset({
@@ -102,7 +106,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
           unitsPerPack: product.unitsPerPack,
           packQuantity: product.packQuantity,
           packPrice: formatPriceForInput(product.packPrice),
-          expirationDate: parseISO(product.expirationDate),
+          expirationDate,
         });
       }
     }
@@ -147,8 +151,6 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
     let value = e.target.value;
     value = value.replace(/\D/g, '');
     
-    // Convert to number, divide by 100, then format back to string.
-    // This avoids padding with zeros and handles decimal insertion correctly.
     const numericValue = (parseInt(value, 10) / 100);
     if(isNaN(numericValue)) {
         fieldChange('');
@@ -160,6 +162,33 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
   };
   
   const watchedPackType = form.watch('packType');
+
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (date?: Date) => void) => {
+    const value = e.target.value;
+    setDateInput(value);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        const date = parse(value, 'dd/MM/yyyy', new Date());
+        if (!isNaN(date.getTime())) {
+            fieldChange(date);
+        } else {
+            fieldChange(undefined);
+        }
+    } else {
+        fieldChange(undefined);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined, fieldChange: (date?: Date) => void) => {
+      if(date) {
+        fieldChange(date);
+        setDateInput(format(date, 'dd/MM/yyyy'));
+        setCalendarOpen(false);
+      } else {
+        fieldChange(undefined);
+        setDateInput('');
+      }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -308,15 +337,8 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
                       <FormControl>
                         <Input
                           placeholder="dd/mm/aaaa"
-                          value={field.value ? format(field.value, 'dd/MM/yyyy') : ''}
-                          onChange={(e) => {
-                            const date = parse(e.target.value, 'dd/MM/yyyy', new Date());
-                            if (!isNaN(date.getTime())) {
-                              field.onChange(date);
-                            } else {
-                              field.onChange(undefined);
-                            }
-                          }}
+                          value={dateInput}
+                          onChange={(e) => handleDateInputChange(e, field.onChange)}
                           className="pr-8"
                         />
                       </FormControl>
@@ -338,10 +360,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
                         fromDate={new Date()}
                         toDate={addYears(new Date(), 10)}
                         selected={field.value}
-                        onSelect={(date) => {
-                          if(date) field.onChange(date);
-                          setCalendarOpen(false);
-                        }}
+                        onSelect={(date) => handleDateSelect(date, field.onChange)}
                         initialFocus
                       />
                     </PopoverContent>

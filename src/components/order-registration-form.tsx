@@ -74,6 +74,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
   const [isConfirming, setIsConfirming] = React.useState(false);
   const [isSelectProductOpen, setSelectProductOpen] = React.useState(false);
   const [productForQuantity, setProductForQuantity] = React.useState<Product | null>(null);
+  const [dateInput, setDateInput] = React.useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,6 +97,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                 notes: '',
                 deliveryDate: undefined
             });
+            setDateInput('');
         }
     }
   }, [isPending, form]);
@@ -167,7 +169,35 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
         notes: '',
         deliveryDate: undefined
     });
+    setDateInput('');
   }
+  
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (date?: Date) => void) => {
+    const value = e.target.value;
+    setDateInput(value);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        const date = parse(value, 'dd/MM/yyyy', new Date());
+        if (!isNaN(date.getTime())) {
+            fieldChange(date);
+        } else {
+            fieldChange(undefined);
+        }
+    } else {
+        fieldChange(undefined);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined, fieldChange: (date?: Date) => void) => {
+      if(date) {
+        fieldChange(date);
+        setDateInput(format(date, 'dd/MM/yyyy'));
+        setCalendarOpen(false);
+      } else {
+        fieldChange(undefined);
+        setDateInput('');
+      }
+  };
+
 
   return (
     <>
@@ -198,15 +228,8 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                       <FormControl>
                         <Input
                           placeholder="dd/mm/aaaa"
-                          value={field.value ? format(field.value, 'dd/MM/yyyy') : ''}
-                          onChange={(e) => {
-                            const date = parse(e.target.value, 'dd/MM/yyyy', new Date());
-                            if (!isNaN(date.getTime())) {
-                              field.onChange(date);
-                            } else {
-                              field.onChange(undefined);
-                            }
-                          }}
+                          value={dateInput}
+                          onChange={(e) => handleDateInputChange(e, field.onChange)}
                           className="pr-8"
                         />
                       </FormControl>
@@ -228,10 +251,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                         fromDate={new Date()}
                         toYear={new Date().getFullYear() + 10}
                         selected={field.value}
-                        onSelect={(date) => {
-                          if (date) field.onChange(date);
-                          setCalendarOpen(false);
-                        }}
+                        onSelect={(date) => handleDateSelect(date, field.onChange)}
                         initialFocus
                       />
                     </PopoverContent>
