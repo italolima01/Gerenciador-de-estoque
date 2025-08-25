@@ -31,23 +31,35 @@ import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-const formSchema = z.discriminatedUnion('packType', [
-    z.object({
-        packType: z.literal('Unidade'),
-        name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
-        quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-        price: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
-        expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
-    }),
-    z.object({
-        packType: z.union([z.literal('Caixa'), z.literal('Fardo')]),
-        name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
-        unitsPerPack: z.coerce.number().int().min(1, { message: 'Deve haver pelo menos 1 unidade.' }),
-        packQuantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-        packPrice: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
-        expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
-    }),
-]);
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
+  packType: z.enum(['Caixa', 'Fardo', 'Unidade'], { required_error: 'Selecione um tipo de embalagem.' }),
+  quantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }).optional(),
+  price: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }).optional(),
+  unitsPerPack: z.coerce.number().int().min(1, { message: 'Deve haver pelo menos 1 unidade.' }).optional(),
+  packQuantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }).optional(),
+  packPrice: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }).optional(),
+  expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
+}).superRefine((data, ctx) => {
+    if (data.packType === 'Unidade') {
+        if (data.quantity === undefined || data.quantity === null) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A quantidade é obrigatória.', path: ['quantity'] });
+        }
+        if (!data.price) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'O preço é obrigatório.', path: ['price'] });
+        }
+    } else {
+        if (data.unitsPerPack === undefined || data.unitsPerPack === null) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'As unidades são obrigatórias.', path: ['unitsPerPack'] });
+        }
+        if (data.packQuantity === undefined || data.packQuantity === null) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A quantidade é obrigatória.', path: ['packQuantity'] });
+        }
+        if (!data.packPrice) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'O preço é obrigatório.', path: ['packPrice'] });
+        }
+    }
+});
 
 
 type FormValues = z.infer<typeof formSchema>;
@@ -78,26 +90,26 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     let newProduct: Omit<Product, 'id'>;
 
     if (values.packType === 'Unidade') {
-        const unitPrice = parseFloat(values.price.replace(/\./g, '').replace(',', '.'));
+        const unitPrice = parseFloat(values.price!.replace(/\./g, '').replace(',', '.'));
         newProduct = {
             name: values.name,
             packType: 'Unidade',
             unitsPerPack: 1,
-            packQuantity: values.quantity,
-            quantity: values.quantity,
+            packQuantity: values.quantity!,
+            quantity: values.quantity!,
             packPrice: unitPrice,
             price: unitPrice,
             expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
         };
     } else {
-        const packPriceAsNumber = parseFloat(values.packPrice.replace(/\./g, '').replace(',', '.'));
-        const pricePerUnit = values.unitsPerPack > 0 ? packPriceAsNumber / values.unitsPerPack : 0;
+        const packPriceAsNumber = parseFloat(values.packPrice!.replace(/\./g, '').replace(',', '.'));
+        const pricePerUnit = values.unitsPerPack! > 0 ? packPriceAsNumber / values.unitsPerPack! : 0;
         newProduct = {
             name: values.name,
-            packType: values.packType,
-            unitsPerPack: values.unitsPerPack,
-            packQuantity: values.packQuantity,
-            quantity: values.packQuantity * values.unitsPerPack,
+            packType: values.packType!,
+            unitsPerPack: values.unitsPerPack!,
+            packQuantity: values.packQuantity!,
+            quantity: values.packQuantity! * values.unitsPerPack!,
             packPrice: packPriceAsNumber,
             price: pricePerUnit,
             expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
@@ -148,15 +160,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Embalagem</FormLabel>
-                  <Select onValueChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('name', form.getValues('name'));
-                      const currentExpDate = form.getValues('expirationDate');
-                      if (currentExpDate) {
-                        form.setValue('expirationDate', form.getValues('expirationDate'));
-                      }
-                      form.trigger();
-                  }} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
@@ -182,7 +186,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                         <FormItem>
                         <FormLabel>Quantidade Total</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="50" {...field} />
+                            <Input type="number" placeholder="50" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -198,6 +202,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                             <Input
                             placeholder="5,99"
                             {...field}
+                             value={field.value ?? ''}
                             onChange={(e) => handlePriceChange(e, field.onChange)}
                             />
                         </FormControl>
@@ -217,7 +222,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                             <FormItem>
                             <FormLabel>Unidades por Embalagem</FormLabel>
                             <FormControl>
-                                <Input type="number" placeholder="12" {...field} />
+                                <Input type="number" placeholder="12" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -230,7 +235,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                             <FormItem>
                             <FormLabel>Qtd. de Embalagens</FormLabel>
                             <FormControl>
-                                <Input type="number" placeholder="50" {...field} />
+                                <Input type="number" placeholder="50" {...field} value={field.value ?? ''}/>
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -246,6 +251,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                                 <Input
                                 placeholder="77,94"
                                 {...field}
+                                value={field.value ?? ''}
                                 onChange={(e) => handlePriceChange(e, field.onChange)}
                                 />
                             </FormControl>
@@ -310,5 +316,3 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     </Dialog>
   );
 }
-
-    
