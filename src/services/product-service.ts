@@ -16,7 +16,10 @@ export async function getProducts(): Promise<Product[]> {
 
 // Function to add a new product
 export async function addProduct(productData: Omit<Product, 'id' | 'quantity'>): Promise<Product> {
-    const quantity = productData.packQuantity * productData.unitsPerPack;
+    const quantity = productData.packType === 'Unidade' 
+        ? productData.packQuantity // For 'Unidade', packQuantity holds the total quantity
+        : productData.packQuantity * productData.unitsPerPack;
+        
     const newProductData = { ...productData, quantity };
     
     const productsCol = collection(db, PRODUCTS_COLLECTION);
@@ -35,23 +38,14 @@ export async function updateProduct(productData: Product): Promise<Product> {
         throw new Error("Product not found");
     }
 
-    const newCalculatedQuantity = productData.packQuantity * productData.unitsPerPack;
-
-    const dataToUpdate = {
-      name: productData.name,
-      packType: productData.packType,
-      unitsPerPack: productData.unitsPerPack,
-      packQuantity: productData.packQuantity,
-      packPrice: productData.packPrice,
-      price: productData.price,
-      expirationDate: productData.expirationDate,
-      quantity: newCalculatedQuantity,
-    };
+    // When updating, the quantity is what is passed from the form.
+    // The service layer doesn't need to recalculate it here, as the dialog logic handles it.
+    const { id, ...dataToUpdate } = productData;
 
     await updateDoc(productRef, dataToUpdate);
     console.log("Product updated: ", productData.id);
 
-    return { ...productData, quantity: newCalculatedQuantity };
+    return productData;
 }
 
 
