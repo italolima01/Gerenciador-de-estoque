@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,12 +63,16 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // No defaultValues here to avoid server-side Zod issue
+    // Remover defaultValues daqui para evitar o erro de SSR
   });
   
   React.useEffect(() => {
+    // Resetar o formulário aqui, no lado do cliente, quando o diálogo é aberto
     if (isOpen) {
-      form.reset();
+      form.reset({
+        name: '',
+        packType: undefined,
+      });
     }
   }, [isOpen, form]);
 
@@ -154,6 +157,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       if (currentExpDate) {
                         form.setValue('expirationDate', form.getValues('expirationDate'));
                       }
+                      form.trigger(); // Força a revalidação
                   }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>

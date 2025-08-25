@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -183,6 +182,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
                       field.onChange(value);
                       form.setValue('name', product.name);
                       form.setValue('expirationDate', parseISO(product.expirationDate));
+                      form.trigger();
                    }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
