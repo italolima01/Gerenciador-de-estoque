@@ -96,13 +96,15 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
   }
 
   const getPriceDisplay = () => {
-    const { packType, price, packPrice } = product;
+    const { packType, price, packPrice, unitsPerPack } = product;
 
     if (packType === 'Unidade') {
-      return `${formatCurrency(price)} / un.`;
+        return `${formatCurrency(price)} / un.`;
     }
 
-    return `${formatCurrency(packPrice || 0)} / ${packType.toLowerCase()}`;
+    // For packs, prioritize packPrice. Fallback to calculating from unit price if needed.
+    const priceToShow = packPrice ?? price * unitsPerPack;
+    return `${formatCurrency(priceToShow)} / ${packType.toLowerCase()}`;
   };
 
 
