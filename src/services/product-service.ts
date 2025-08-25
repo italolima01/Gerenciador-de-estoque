@@ -1,143 +1,49 @@
-
 import type { Product } from '@/lib/types';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, runTransaction } from "firebase/firestore";
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from '@/lib/firebase';
-import { v4 as uuidv4 } from 'uuid';
 
 const PRODUCTS_COLLECTION = 'products';
 
-// Mock function to simulate network delay
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// This is a simplified in-memory "database" for demonstration.
-// In a real app, you would use a proper database like Firestore.
-let memoryProducts: Product[] = [
-    {
-    id: 'prod_001',
-    name: 'Vinho Tinto Cabernet',
-    packType: 'Caixa',
-    unitsPerPack: 6,
-    packQuantity: 5,
-    quantity: 30,
-    price: 75.50,
-    expirationDate: '2025-12-20',
-  },
-  {
-    id: 'prod_002',
-    name: 'Cerveja Artesanal IPA',
-    packType: 'Fardo',
-    unitsPerPack: 12,
-    packQuantity: 12,
-    quantity: 150,
-    price: 12.99,
-    expirationDate: '2024-11-15',
-  },
-  {
-    id: 'prod_003',
-    name: 'Whisky Escocês 12 Anos',
-    packType: 'Caixa',
-    unitsPerPack: 1,
-    packQuantity: 15,
-    quantity: 15,
-    price: 189.90,
-    expirationDate: '2030-01-01',
-  },
-  {
-    id: 'prod_004',
-    name: 'Refrigerante de Cola',
-    packType: 'Fardo',
-    unitsPerPack: 6,
-    packQuantity: 3,
-    quantity: 20,
-    price: 5.00,
-    expirationDate: '2024-10-30',
-  },
-  {
-    id: 'prod_005',
-    name: 'Água Mineral com Gás',
-    packType: 'Fardo',
-    unitsPerPack: 12,
-    packQuantity: 16,
-    quantity: 200,
-    price: 3.50,
-    expirationDate: '2025-08-01',
-  },
-  {
-    id: 'prod_006',
-    name: 'Suco de Laranja Integral',
-    packType: 'Caixa',
-    unitsPerPack: 8,
-    packQuantity: 5,
-    quantity: 40,
-    price: 8.75,
-    expirationDate: '2024-09-10',
-  },
-    {
-    id: 'prod_007',
-    name: 'Vodka Premium',
-    packType: 'Caixa',
-    unitsPerPack: 1,
-    packQuantity: 25,
-    quantity: 25,
-    price: 95.00,
-    expirationDate: '2028-06-01',
-  },
-  {
-    id: 'prod_008',
-    name: 'Champanhe Brut',
-    packType: 'Caixa',
-    unitsPerPack: 1,
-    packQuantity: 10,
-    quantity: 10,
-    price: 250.00,
-    expirationDate: '2026-05-20',
-  },
-];
-
 // Function to get all products
 export async function getProducts(): Promise<Product[]> {
-    console.log("Fetching products...");
-    await sleep(500); // Simulate delay
+    console.log("Fetching products from Firestore...");
+    const productsCol = collection(db, PRODUCTS_COLLECTION);
+    const productSnapshot = await getDocs(productsCol);
+    const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
     // Sort by name by default
-    return [...memoryProducts].sort((a, b) => a.name.localeCompare(b.name));
+    return productList.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Function to add a new product
 export async function addProduct(productData: Omit<Product, 'id' | 'quantity'>): Promise<Product> {
-    await sleep(500);
     const quantity = productData.packQuantity * productData.unitsPerPack;
-    const newProduct: Product = {
-        id: uuidv4(),
-        ...productData,
-        quantity,
-    };
-    memoryProducts.push(newProduct);
-    console.log("Product added:", newProduct);
-    return newProduct;
+    const newProductData = { ...productData, quantity };
+    
+    const productsCol = collection(db, PRODUCTS_COLLECTION);
+    const docRef = await addDoc(productsCol, newProductData);
+    console.log("Product added with ID: ", docRef.id);
+    
+    return { id: docRef.id, ...newProductData };
 }
 
 // Function to update an existing product
 export async function updateProduct(productData: Product): Promise<Product> {
-    await sleep(500);
     const quantity = productData.packQuantity * productData.unitsPerPack;
-    const updatedProduct = { ...productData, quantity };
-
-    const index = memoryProducts.findIndex(p => p.id === updatedProduct.id);
-    if (index === -1) {
-        throw new Error("Product not found");
-    }
-    memoryProducts[index] = updatedProduct;
-    console.log("Product updated:", updatedProduct);
-    return updatedProduct;
+    const updatedProductData = { ...productData, quantity };
+    
+    const productRef = doc(db, PRODUCTS_COLLECTION, updatedProductData.id);
+    // We remove the id from the data being sent to Firestore
+    const { id, ...dataToUpdate } = updatedProductData;
+    await updateDoc(productRef, dataToUpdate);
+    console.log("Product updated: ", id);
+    
+    return updatedProductData;
 }
 
 // Function to delete a product
 export async function deleteProduct(productId: string): Promise<void> {
-    await sleep(500);
-    const index = memoryProducts.findIndex(p => p.id === productId);
-    if (index === -1) {
-        throw new Error("Product not found");
-    }
-    memoryProducts.splice(index, 1);
+    if (!productId) throw new Error("Product ID is required");
+    const productRef = doc(db, PRODUCTS_COLLECTION, productId);
+    await deleteDoc(productRef);
     console.log("Product deleted:", productId);
 }
