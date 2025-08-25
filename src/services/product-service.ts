@@ -29,22 +29,12 @@ export async function addProduct(productData: Omit<Product, 'id' | 'quantity'>):
 // Function to update an existing product
 export async function updateProduct(productData: Product): Promise<Product> {
     const productRef = doc(db, PRODUCTS_COLLECTION, productData.id);
-
-    // When updating a product, we should not blindly trust the quantity from the form.
-    // The quantity is primarily managed by sales orders.
-    // We only update the descriptive fields, price, expiration, and pack info.
-    // The total quantity should only change through sales or manual stock adjustments.
     
-    // First, fetch the most current state of the product from the DB.
     const docSnap = await getDoc(productRef);
     if (!docSnap.exists()) {
         throw new Error("Product not found");
     }
-    const existingProduct = docSnap.data() as Product;
 
-    // Recalculate quantity based on pack info from the form,
-    // but the TRUE quantity is determined by sales.
-    // Let's assume editing pack quantity reflects a stock recount.
     const newCalculatedQuantity = productData.packQuantity * productData.unitsPerPack;
 
     const dataToUpdate = {
@@ -52,9 +42,9 @@ export async function updateProduct(productData: Product): Promise<Product> {
       packType: productData.packType,
       unitsPerPack: productData.unitsPerPack,
       packQuantity: productData.packQuantity,
+      packPrice: productData.packPrice,
       price: productData.price,
       expirationDate: productData.expirationDate,
-      // The new source of truth for total quantity is the pack calculation.
       quantity: newCalculatedQuantity,
     };
 

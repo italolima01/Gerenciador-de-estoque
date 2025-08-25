@@ -36,7 +36,7 @@ const formSchema = z.object({
   packType: z.string().min(2, { message: 'O tipo de embalagem deve ter pelo menos 2 caracteres.' }),
   unitsPerPack: z.coerce.number().int().min(1, { message: 'Deve haver pelo menos 1 unidade.' }),
   packQuantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
+  packPrice: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -65,7 +65,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
       packType: product?.packType || '',
       unitsPerPack: product?.unitsPerPack || 1,
       packQuantity: product?.packQuantity || 0,
-      price: formatPriceForInput(product?.price) || '',
+      packPrice: formatPriceForInput(product?.packPrice) || '',
       expirationDate: product?.expirationDate ? parseISO(product.expirationDate) : new Date(),
     },
   });
@@ -77,22 +77,25 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
         packType: product.packType,
         unitsPerPack: product.unitsPerPack,
         packQuantity: product.packQuantity,
-        price: formatPriceForInput(product.price),
+        packPrice: formatPriceForInput(product.packPrice),
         expirationDate: parseISO(product.expirationDate),
       });
     }
   }, [product, form]);
 
   function onSubmit(values: FormValues) {
-    const priceAsString = values.price || '';
-    const priceAsNumber = parseFloat(priceAsString.replace(/\./g, '').replace(',', '.'));
+    const packPriceAsString = values.packPrice || '';
+    const packPriceAsNumber = parseFloat(packPriceAsString.replace(/\./g, '').replace(',', '.'));
+    const pricePerUnit = values.unitsPerPack > 0 ? packPriceAsNumber / values.unitsPerPack : 0;
+
     const updatedProduct: Product = {
       ...product,
       name: values.name,
       packType: values.packType,
       unitsPerPack: values.unitsPerPack,
       packQuantity: values.packQuantity,
-      price: priceAsNumber,
+      packPrice: packPriceAsNumber,
+      price: pricePerUnit,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
       // Total quantity will be recalculated in the parent component
       quantity: product.quantity, 
@@ -166,7 +169,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
               name="packQuantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Qtd. de Caixas/Fardos</FormLabel>
+                  <FormLabel>Qtd. de Embalagens</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="50" {...field} />
                   </FormControl>
@@ -177,13 +180,13 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
 
             <FormField
               control={form.control}
-              name="price"
+              name="packPrice"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preço por Unidade (R$)</FormLabel>
+                  <FormLabel>Preço por Embalagem (R$)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="12,99"
+                      placeholder="77,94"
                       {...field}
                       onChange={(e) => handlePriceChange(e, field.onChange)}
                     />

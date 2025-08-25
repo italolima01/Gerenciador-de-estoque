@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +36,7 @@ const formSchema = z.object({
   packType: z.string().min(2, { message: 'O tipo de embalagem deve ter pelo menos 2 caracteres.' }),
   unitsPerPack: z.coerce.number().int().min(1, { message: 'Deve haver pelo menos 1 unidade.' }),
   packQuantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
-  price: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
+  packPrice: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
   expirationDate: z.date({ required_error: 'A data de vencimento é obrigatória.' }),
 });
 
@@ -57,7 +58,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       packType: '',
       unitsPerPack: 1,
       packQuantity: 0,
-      price: '',
+      packPrice: '',
       expirationDate: undefined,
     },
   });
@@ -69,21 +70,26 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
         packType: '',
         unitsPerPack: 1,
         packQuantity: 0,
-        price: '',
+        packPrice: '',
         expirationDate: undefined,
       });
     }
   }, [isOpen, form]);
 
   function onSubmit(values: FormValues) {
-    const priceAsString = values.price || '';
-    const priceAsNumber = parseFloat(priceAsString.replace(/\./g, '').replace(',', '.'));
+    const packPriceAsString = values.packPrice || '';
+    const packPriceAsNumber = parseFloat(packPriceAsString.replace(/\./g, '').replace(',', '.'));
+    
+    // Calculate price per unit, ensure no division by zero
+    const pricePerUnit = values.unitsPerPack > 0 ? packPriceAsNumber / values.unitsPerPack : 0;
+    
     const newProduct: Omit<Product, 'id' | 'quantity'> = {
       name: values.name,
       packType: values.packType,
       unitsPerPack: values.unitsPerPack,
       packQuantity: values.packQuantity,
-      price: priceAsNumber,
+      packPrice: packPriceAsNumber,
+      price: pricePerUnit,
       expirationDate: format(values.expirationDate, 'yyyy-MM-dd'),
     };
     onProductAdd(newProduct);
@@ -156,7 +162,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
               name="packQuantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Qtd. de Caixas/Fardos</FormLabel>
+                  <FormLabel>Qtd. de Embalagens</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="50" {...field} />
                   </FormControl>
@@ -167,13 +173,13 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
 
             <FormField
               control={form.control}
-              name="price"
+              name="packPrice"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preço por Unidade (R$)</FormLabel>
+                  <FormLabel>Preço por Embalagem (R$)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="12,99"
+                      placeholder="77,94"
                       {...field}
                       onChange={(e) => handlePriceChange(e, field.onChange)}
                     />

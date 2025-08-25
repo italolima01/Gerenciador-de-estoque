@@ -7,6 +7,7 @@ export type Product = {
   packQuantity: number;
   quantity: number; // Total individual units (packQuantity * unitsPerPack)
   price: number; // Price per individual unit
+  packPrice?: number; // Price per pack
   expirationDate: string; // YYYY-MM-DD
 };
 
