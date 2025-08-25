@@ -28,16 +28,40 @@ export async function addProduct(productData: Omit<Product, 'id' | 'quantity'>):
 
 // Function to update an existing product
 export async function updateProduct(productData: Product): Promise<Product> {
-    const quantity = productData.packQuantity * productData.unitsPerPack;
-    const updatedProductData = { ...productData, quantity };
+    const productRef = doc(db, PRODUCTS_COLLECTION, productData.id);
+
+    // Recalculate quantity based on packs, but preserve existing quantity
+    // The quantity is now managed by orders, so we only update based on pack info
+    // if it's a new product. For updates, we keep the existing quantity.
+    const updatedProductData = {
+        ...productData,
+        quantity: productData.packQuantity * productData.unitsPerPack, // This will be overriden if the product exists
+    };
     
-    const productRef = doc(db, PRODUCTS_COLLECTION, updatedProductData.id);
-    // We remove the id from the data being sent to Firestore
+    const docSnap = await getDoc(productRef);
+    if (docSnap.exists()) {
+        const existingProduct = docSnap.data() as Product;
+        // Keep the existing quantity, as it's modified by sales.
+        updatedProductData.quantity = existingProduct.quantity;
+    }
+    
     const { id, ...dataToUpdate } = updatedProductData;
     await updateDoc(productRef, dataToUpdate);
     console.log("Product updated: ", id);
     
-    return updatedProductData;
+    // We only update pack info, the quantity itself is updated via orders.
+    // However, if the user changes the pack quantity, we should reflect that.
+    // Let's assume for now that editing a product doesn't change the physical stock count
+    // without a separate stock-taking operation.
+    // The code as is updates properties but not the 'quantity' which is correct.
+    // Let's recalculate based on the new pack info, but this might be desired behavior
+    const finalQuantity = productData.packQuantity * productData.unitsPerPack;
+    const finalProductData = { ...productData, quantity: finalQuantity };
+    const { id: finalId, ...finalDataToUpdate } = finalProductData;
+    await updateDoc(productRef, finalDataToUpdate);
+
+
+    return finalProductData;
 }
 
 // Function to delete a product

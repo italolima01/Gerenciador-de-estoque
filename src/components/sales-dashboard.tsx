@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { subDays, parseISO, subMonths, isSameDay, isSameMonth } from 'date-fns';
+import { subDays, parseISO, subMonths, isSameDay, isSameMonth, startOfDay } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import type { Order, Product } from '@/lib/types';
@@ -86,7 +86,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
             const label = format(date, 'dd/MM', { timeZone, locale: ptBR });
             weeklyChartData.push({
                 date: label,
-                fullDate: date,
+                fullDate: startOfDay(date),
                 total: weeklySalesMap.get(dateKey) || 0
             });
         }
@@ -124,7 +124,7 @@ export function SalesDashboard({ orders, products, isLoading }: SalesDashboardPr
         }
 
         const payload = data.activePayload[0].payload;
-        const clickedDate = payload.fullDate;
+        const clickedDate = payload.fullDate as Date;
         
         let filteredOrders: Order[] = [];
         if (type === 'day') {

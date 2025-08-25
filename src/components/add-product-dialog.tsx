@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,12 +58,20 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
       unitsPerPack: 1,
       packQuantity: 0,
       price: '',
+      expirationDate: undefined,
     },
   });
   
   React.useEffect(() => {
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        name: '',
+        packType: '',
+        unitsPerPack: 1,
+        packQuantity: 0,
+        price: '',
+        expirationDate: undefined,
+      });
     }
   }, [isOpen, form]);
 
