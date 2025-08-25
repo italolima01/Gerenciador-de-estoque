@@ -99,10 +99,10 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
     const { packType, price, packPrice } = product;
 
     if (packType === 'Unidade') {
-        return `${formatCurrency(price)} / unidade`
+        return `${formatCurrency(price)} / un.`;
     }
 
-    return `${formatCurrency(packPrice || 0)} / ${packType.toLowerCase()}`
+    return `${formatCurrency(packPrice || 0)} / ${packType.toLowerCase()}`;
   }
 
 
