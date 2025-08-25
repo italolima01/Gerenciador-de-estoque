@@ -95,6 +95,16 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
     )
   }
 
+  const getPriceDisplay = () => {
+    const { packType, price, packPrice } = product;
+
+    if (packType === 'Unidade') {
+        return `${formatCurrency(price)} / unidade`
+    }
+
+    return `${formatCurrency(packPrice || 0)} / ${packType.toLowerCase()}`
+  }
+
 
   return (
     <Card 
@@ -109,7 +119,7 @@ export function ProductCard({ product, onAlertClick, onEditClick, onDeleteClick,
                     {zoneTextMap[quantityZone.zone]}
                 </Badge>
             </div>
-            <p className="font-semibold text-primary">{formatCurrency(product.price)} / unidade</p>
+            <p className="font-semibold text-primary">{getPriceDisplay()}</p>
         </div>
       </CardHeader>
       <CardContent className="flex-grow p-4 pt-0">
