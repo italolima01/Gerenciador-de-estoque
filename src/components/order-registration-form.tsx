@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,6 +54,18 @@ function formatCurrency(value: number) {
         style: 'currency',
         currency: 'BRL',
     }).format(value);
+}
+
+function getReadableQuantity(quantity: number, unitsPerPack: number, packType: string) {
+    if (!unitsPerPack || unitsPerPack <= 1 || quantity < unitsPerPack) {
+      return `${quantity} un.`;
+    }
+    const packs = Math.floor(quantity / unitsPerPack);
+    const units = quantity % unitsPerPack;
+    if (units === 0) {
+        return `${packs} ${packType}(s)`;
+    }
+    return `${packs} ${packType}(s) e ${units} un.`;
 }
 
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
@@ -241,6 +252,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                   <Button
                     type="button"
                     onClick={() => setSelectProductOpen(true)}
+                    disabled={availableProducts.length === 0}
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Produto
@@ -249,7 +261,6 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
               ) : (
                 fields.map((field, index) => {
                       const selectedProduct = products.find(p => p.id === field.productId);
-                      const maxQuantity = selectedProduct?.quantity ?? 0;
                       const price = selectedProduct?.price ?? 0;
                       const currentQuantity = form.watch(`items.${index}.quantity`) || 0;
                       const subtotal = price * currentQuantity;
@@ -261,25 +272,10 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                                     <p className="font-semibold">{selectedProduct?.name}</p>
                                     <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name={`items.${index}.quantity`}
-                                    render={({ field }) => (
-                                    <FormItem className="w-24">
-                                        <FormLabel>Qtd.</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                {...field}
-                                                min={1}
-                                                max={maxQuantity > 0 ? maxQuantity : undefined}
-                                                onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                                <div>
+                                    <FormLabel>Qtd.</FormLabel>
+                                    <p className="font-semibold text-lg h-10 flex items-center">{getReadableQuantity(currentQuantity, selectedProduct?.unitsPerPack || 1, selectedProduct?.packType || '')}</p>
+                                </div>
                                 <div className="w-32 text-right hidden sm:block">
                                     <FormLabel>Subtotal</FormLabel>
                                     <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(subtotal)}</p>
@@ -304,6 +300,7 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                         type="button"
                         size="sm"
                         onClick={() => setSelectProductOpen(true)}
+                        disabled={availableProducts.length === 0}
                     >
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Produto

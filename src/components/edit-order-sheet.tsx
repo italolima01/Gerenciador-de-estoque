@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,6 +66,18 @@ function formatCurrency(value: number) {
         style: 'currency',
         currency: 'BRL',
     }).format(value);
+}
+
+function getReadableQuantity(quantity: number, unitsPerPack: number, packType: string) {
+    if (!unitsPerPack || unitsPerPack <= 1 || quantity < unitsPerPack) {
+      return `${quantity} un.`;
+    }
+    const packs = Math.floor(quantity / unitsPerPack);
+    const units = quantity % unitsPerPack;
+    if (units === 0) {
+        return `${packs} ${packType}(s)`;
+    }
+    return `${packs} ${packType}(s) e ${units} un.`;
 }
 
 export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderUpdate, isPending }: EditOrderSheetProps) {
@@ -154,7 +165,8 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
   
   const handleSelectProduct = (product: Product) => {
     setSelectProductOpen(false);
-    setProductForQuantity(product);
+    const availableStock = getAvailableStock(product.id);
+    setProductForQuantity({ ...product, quantity: availableStock });
   };
 
   const handleConfirmQuantity = (productId: string, quantity: number) => {
@@ -164,10 +176,9 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
 
   const availableProducts = products.filter(p => {
     const isAlreadyInOrder = watchedItems.some(item => item.productId === p.id);
-    if (isAlreadyInOrder) return false; // Don't show products already in the order
+    if (isAlreadyInOrder) return false;
     
-    const originalItem = order.items.find(item => item.productId === p.id);
-    const availableStock = (p.quantity || 0) + (originalItem?.quantity || 0);
+    const availableStock = getAvailableStock(p.id);
     return availableStock > 0;
   });
 
@@ -259,10 +270,11 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                           const selectedProduct = products.find(p => p.id === field.productId);
                           const availableStock = getAvailableStock(field.productId);
                           const price = selectedProduct?.price ?? 0;
+                          const currentQuantity = form.watch(`items.${index}.quantity`) || 0;
                           
                         return (
                             <div key={field.id} className="flex items-end gap-2 p-4 border rounded-lg bg-muted/50">
-                               <div className="flex-1 grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
+                               <div className="flex-1 grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
                                   <div>
                                     <p className="font-semibold">{selectedProduct?.name}</p>
                                     <p className="text-sm text-muted-foreground">{formatCurrency(price)} / un.</p>
@@ -272,7 +284,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                     name={`items.${index}.quantity`}
                                     render={({ field }) => (
                                     <FormItem className="w-24">
-                                        <FormLabel>Qtd.</FormLabel>
+                                        <FormLabel>Qtd. (un)</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 type="number" 
@@ -286,9 +298,9 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                                     </FormItem>
                                     )}
                                 />
-                                <div className="w-32 text-right">
+                                <div className="w-32 text-right hidden sm:block">
                                     <FormLabel>Subtotal</FormLabel>
-                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(price * (form.watch(`items.${index}.quantity`) || 0))}</p>
+                                    <p className="font-semibold text-lg h-10 flex items-center justify-end">{formatCurrency(price * currentQuantity)}</p>
                                 </div>
                                 </div>
                                 <Button
@@ -321,6 +333,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
                           type="button"
                           size="sm"
                           onClick={() => setSelectProductOpen(true)}
+                          disabled={availableProducts.length === 0}
                       >
                           <PlusCircle className="mr-2 h-4 w-4" />
                           Adicionar Produto
@@ -366,7 +379,7 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
      <SelectProductDialog
         isOpen={isSelectProductOpen}
         onOpenChange={setSelectProductOpen}
-        products={availableProducts.filter(p => !watchedItems.some(item => item.productId === p.id))}
+        products={availableProducts}
         onSelectProduct={handleSelectProduct}
       />
     <SelectQuantityDialog
@@ -379,5 +392,3 @@ export function EditOrderSheet({ order, products, isOpen, onOpenChange, onOrderU
     </>
   );
 }
-
-    
