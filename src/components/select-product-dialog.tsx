@@ -37,6 +37,22 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
+function getStockDisplay(product: Product) {
+    const { quantity, unitsPerPack, packType } = product;
+    if (packType === 'Unidade' || !unitsPerPack || unitsPerPack <= 1) {
+        return `${quantity} un.`;
+    }
+    
+    const fullPacks = Math.floor(quantity / unitsPerPack);
+    const looseUnits = quantity % unitsPerPack;
+    
+    if (looseUnits === 0) {
+        return `${fullPacks} ${packType.toLowerCase()}(s)`;
+    }
+    
+    return `${fullPacks} ${packType.toLowerCase()}(s) e ${looseUnits} un.`;
+}
+
 export function SelectProductDialog({ isOpen, onOpenChange, products, onSelectProduct }: SelectProductDialogProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -83,7 +99,7 @@ export function SelectProductDialog({ isOpen, onOpenChange, products, onSelectPr
               {filteredProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.quantity}</TableCell>
+                  <TableCell>{getStockDisplay(product)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
                   <TableCell className="text-right">
                     <Button
