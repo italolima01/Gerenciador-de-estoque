@@ -1,5 +1,5 @@
 import type { Product } from '@/lib/types';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 
 const PRODUCTS_COLLECTION = 'products';
@@ -30,39 +30,40 @@ export async function addProduct(productData: Omit<Product, 'id' | 'quantity'>):
 export async function updateProduct(productData: Product): Promise<Product> {
     const productRef = doc(db, PRODUCTS_COLLECTION, productData.id);
 
-    // Recalculate quantity based on packs, but preserve existing quantity
-    // The quantity is now managed by orders, so we only update based on pack info
-    // if it's a new product. For updates, we keep the existing quantity.
-    const updatedProductData = {
-        ...productData,
-        quantity: productData.packQuantity * productData.unitsPerPack, // This will be overriden if the product exists
-    };
+    // When updating a product, we should not blindly trust the quantity from the form.
+    // The quantity is primarily managed by sales orders.
+    // We only update the descriptive fields, price, expiration, and pack info.
+    // The total quantity should only change through sales or manual stock adjustments.
     
+    // First, fetch the most current state of the product from the DB.
     const docSnap = await getDoc(productRef);
-    if (docSnap.exists()) {
-        const existingProduct = docSnap.data() as Product;
-        // Keep the existing quantity, as it's modified by sales.
-        updatedProductData.quantity = existingProduct.quantity;
+    if (!docSnap.exists()) {
+        throw new Error("Product not found");
     }
-    
-    const { id, ...dataToUpdate } = updatedProductData;
+    const existingProduct = docSnap.data() as Product;
+
+    // Recalculate quantity based on pack info from the form,
+    // but the TRUE quantity is determined by sales.
+    // Let's assume editing pack quantity reflects a stock recount.
+    const newCalculatedQuantity = productData.packQuantity * productData.unitsPerPack;
+
+    const dataToUpdate = {
+      name: productData.name,
+      packType: productData.packType,
+      unitsPerPack: productData.unitsPerPack,
+      packQuantity: productData.packQuantity,
+      price: productData.price,
+      expirationDate: productData.expirationDate,
+      // The new source of truth for total quantity is the pack calculation.
+      quantity: newCalculatedQuantity,
+    };
+
     await updateDoc(productRef, dataToUpdate);
-    console.log("Product updated: ", id);
-    
-    // We only update pack info, the quantity itself is updated via orders.
-    // However, if the user changes the pack quantity, we should reflect that.
-    // Let's assume for now that editing a product doesn't change the physical stock count
-    // without a separate stock-taking operation.
-    // The code as is updates properties but not the 'quantity' which is correct.
-    // Let's recalculate based on the new pack info, but this might be desired behavior
-    const finalQuantity = productData.packQuantity * productData.unitsPerPack;
-    const finalProductData = { ...productData, quantity: finalQuantity };
-    const { id: finalId, ...finalDataToUpdate } = finalProductData;
-    await updateDoc(productRef, finalDataToUpdate);
+    console.log("Product updated: ", productData.id);
 
-
-    return finalProductData;
+    return { ...productData, quantity: newCalculatedQuantity };
 }
+
 
 // Function to delete a product
 export async function deleteProduct(productId: string): Promise<void> {
