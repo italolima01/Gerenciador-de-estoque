@@ -1,6 +1,6 @@
 
 import type { Order, Product } from '@/lib/types';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, runTransaction, DocumentReference, DocumentSnapshot } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, runTransaction, DocumentReference, DocumentSnapshot, WriteBatch } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 
 const ORDERS_COLLECTION = 'orders';
@@ -48,10 +48,6 @@ export async function addOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'stat
         }
 
         // 3. EXECUTE all writes
-        for (const update of productUpdates) {
-            transaction.update(update.ref, { quantity: update.newQuantity });
-        }
-        
         const newOrder: Order = {
             ...orderData,
             id: newOrderRef.id,
@@ -59,6 +55,10 @@ export async function addOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'stat
             status: 'Pendente',
         };
         transaction.set(newOrderRef, newOrder);
+
+        for (const update of productUpdates) {
+            transaction.update(update.ref, { quantity: update.newQuantity });
+        }
     });
 
     console.log("Order added with ID:", newOrderRef.id);
@@ -80,13 +80,14 @@ export async function updateOrder(orderData: Order, adjustStock: boolean = true)
         }
         const originalOrder = originalOrderDoc.data() as Order;
         
-        const productIds = new Set([
+        const allProductIds = new Set([
             ...originalOrder.items.map(item => item.productId),
             ...orderData.items.map(item => item.productId)
         ]);
         
-        const productRefs = Array.from(productIds).map(id => doc(db, PRODUCTS_COLLECTION, id));
+        const productRefs = Array.from(allProductIds).map(id => doc(db, PRODUCTS_COLLECTION, id));
         const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+        const productMap = new Map(productDocs.map(d => [d.id, d.data() as Product]));
 
         // 2. VALIDATE and PREPARE writes
         const productUpdates: { ref: DocumentReference, newQuantity: number }[] = [];
@@ -94,44 +95,43 @@ export async function updateOrder(orderData: Order, adjustStock: boolean = true)
         if (adjustStock) {
             const stockAdjustments: { [productId: string]: number } = {};
             
+            // Return stock from original order
             for (const item of originalOrder.items) {
                 stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) + item.quantity;
             }
+            // Deduct stock for new order
             for (const item of orderData.items) {
                 stockAdjustments[item.productId] = (stockAdjustments[item.productId] || 0) - item.quantity;
             }
 
-            const productMap = new Map(productDocs.map(d => [d.id, d.data() as Product]));
-
-            for (let i = 0; i < productRefs.length; i++) {
-                const productRef = productRefs[i];
-                const productId = productRef.id;
-                const adjustment = stockAdjustments[productId] || 0;
-
-                if (adjustment !== 0) {
-                    const product = productMap.get(productId);
-                    if (!product) throw new Error(`Produto com ID ${productId} não encontrado.`);
-                    
-                    const newQuantity = product.quantity + adjustment;
-                    if (newQuantity < 0) {
-                        throw new Error(`Estoque insuficiente para ${product.name}.`);
-                    }
-                    productUpdates.push({ ref: productRef, newQuantity });
-                    updatedProducts.push({ ...product, id: productId, quantity: newQuantity });
+            for (const productId of Object.keys(stockAdjustments)) {
+                const product = productMap.get(productId);
+                if (!product) throw new Error(`Produto com ID ${productId} não encontrado.`);
+                
+                const newQuantity = product.quantity + stockAdjustments[productId];
+                if (newQuantity < 0) {
+                    throw new Error(`Estoque insuficiente para ${product.name}.`);
                 }
+                
+                const productRef = doc(db, PRODUCTS_COLLECTION, productId);
+                productUpdates.push({ ref: productRef, newQuantity });
+                updatedProducts.push({ ...product, id: productId, quantity: newQuantity });
             }
         }
         
         // 3. EXECUTE all writes
+        const { id, ...dataToUpdate } = orderData;
+        transaction.update(orderRef, dataToUpdate);
+
         for (const update of productUpdates) {
             transaction.update(update.ref, { quantity: update.newQuantity });
         }
-
-        const { id, ...dataToUpdate } = orderData;
-        transaction.update(orderRef, dataToUpdate);
     });
 
     console.log("Order updated:", orderData.id);
+    const finalOrderDoc = await getDoc(orderRef);
+    const updatedOrder = { id: finalOrderDoc.id, ...finalOrderDoc.data() } as Order;
+
     // Find non-updated products to return a complete list
     const returnedProductIds = new Set(updatedProducts.map(p => p.id));
     const allProductIdsInvolved = new Set(orderData.items.map(i => i.productId));
@@ -145,7 +145,7 @@ export async function updateOrder(orderData: Order, adjustStock: boolean = true)
     }
 
 
-    return { updatedOrder: orderData, updatedProducts };
+    return { updatedOrder, updatedProducts };
 }
 
 // Function to delete an order and return items to stock if it was pending
@@ -161,12 +161,12 @@ export async function deleteOrder(orderId: string): Promise<Product[]> {
         }
         const orderToDelete = orderDoc.data() as Order;
 
+        const productUpdates: { ref: DocumentReference, newQuantity: number }[] = [];
         if (orderToDelete.status === 'Pendente') {
             const productRefs = orderToDelete.items.map(item => doc(db, PRODUCTS_COLLECTION, item.productId));
             const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
 
             // 2. PREPARE writes
-            const productUpdates: { ref: DocumentReference, newQuantity: number }[] = [];
             for (let i = 0; i < orderToDelete.items.length; i++) {
                 const item = orderToDelete.items[i];
                 const productDoc = productDocs[i];
@@ -177,15 +177,13 @@ export async function deleteOrder(orderId: string): Promise<Product[]> {
                     updatedProducts.push({ ...product, id: productDoc.id, quantity: newQuantity });
                 }
             }
-
-            // 3. EXECUTE writes
-            for (const update of productUpdates) {
-                transaction.update(update.ref, { quantity: update.newQuantity });
-            }
         }
         
-        // Final write: delete the order
+        // 3. EXECUTE writes
         transaction.delete(orderRef);
+        for (const update of productUpdates) {
+            transaction.update(update.ref, { quantity: update.newQuantity });
+        }
     });
     
     console.log("Order deleted:", orderId);

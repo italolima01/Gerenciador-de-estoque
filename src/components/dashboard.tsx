@@ -275,25 +275,26 @@ export function Dashboard() {
   }, []);
   
  const handleChangeOrderStatus = useCallback(async (orderId: string, newStatus: Order['status'], note?: string) => {
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) {
+    const originalOrder = orders.find(o => o.id === orderId);
+    if (!originalOrder) {
       toast({ variant: "destructive", title: "Erro", description: "Pedido não encontrado." });
       return;
     }
-    const originalOrder = orders[orderIndex];
 
     startTransition(async () => {
         try {
             const notePrefix = `Anotação (${new Date().toLocaleString('pt-BR')}):`;
             const newNoteContent = note ? `${notePrefix}\n${note}` : '';
-            
             const newNotes = newNoteContent
-            ? (originalOrder.notes ? `${originalOrder.notes}\n\n${newNoteContent}` : newNoteContent)
-            : originalOrder.notes;
+                ? (originalOrder.notes ? `${originalOrder.notes}\n\n${newNoteContent}` : newNoteContent)
+                : originalOrder.notes;
 
-            const orderToUpdate = { ...originalOrder, status: newStatus, notes: newNotes };
+            const dataToUpdate = {
+                status: newStatus,
+                notes: newNotes,
+            };
 
-            const { updatedOrder } = await updateOrder(orderToUpdate, false); // No stock change
+            const { updatedOrder } = await updateOrder({ ...originalOrder, ...dataToUpdate }, false);
             
             setOrders(prevOrders => prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
             
@@ -301,18 +302,18 @@ export function Dashboard() {
                 updatedOrder.items.some(item => item.productId === p.id)
             );
             if (productsToUpdate.length > 0) {
-            setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
+              setProductsToRefresh(current => [...new Set([...current, ...productsToUpdate])]);
             }
+            
             toast({
                 title: "Status do Pedido Alterado!",
                 description: `O pedido foi atualizado para "${newStatus}".`,
             });
-
         } catch (error) {
+             console.error("Failed to change order status:", error);
              toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status do pedido." });
         }
     });
-
   }, [orders, products, toast]);
 
   const handleCompleteOrderWithNote = useCallback((note: string) => {
