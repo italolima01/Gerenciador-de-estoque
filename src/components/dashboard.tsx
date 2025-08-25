@@ -6,7 +6,7 @@ import { PlusCircle } from 'lucide-react';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 
-import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput } from '@/lib/types';
+import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput, StockZone } from '@/lib/types';
 import { getRestockAlert } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +37,12 @@ function removeAccents(str: string) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function getZoneForQuantity(quantity: number): StockZone {
+    if (quantity <= 20) return 'red';
+    if (quantity <= 50) return 'yellow';
+    return 'green';
+}
+
 
 export function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -56,6 +62,7 @@ export function Dashboard() {
   const [isAddNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [stockZoneFilter, setStockZoneFilter] = useState<StockZone | 'all'>('all');
   const [sortOption, setSortOption] = useState<SortOption>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -343,7 +350,7 @@ export function Dashboard() {
 
 
   const processedProducts = useMemo(() => {
-    let filtered = products;
+    let filtered = [...products];
 
     // Name filter
     if (searchQuery) {
@@ -352,8 +359,13 @@ export function Dashboard() {
       );
     }
     
+    // Stock zone filter
+    if (stockZoneFilter !== 'all') {
+        filtered = filtered.filter(product => getZoneForQuantity(product.quantity) === stockZoneFilter);
+    }
+    
     // Sorting
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       let compareResult = 0;
 
       switch (sortOption) {
@@ -376,7 +388,7 @@ export function Dashboard() {
 
     return sorted;
 
-  }, [products, searchQuery, sortOption, sortDirection]);
+  }, [products, searchQuery, stockZoneFilter, sortOption, sortDirection]);
 
 
   const headerButton = useMemo(() => {
@@ -455,10 +467,12 @@ export function Dashboard() {
                 <h2 className="font-headline text-3xl font-bold tracking-tight">Painel de Controle de Estoque</h2>
                 <p className="text-muted-foreground">Monitore e gerencie o inventário de suas bebidas.</p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 mb-6">
                 <ProductFilters
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
+                stockZoneFilter={stockZoneFilter}
+                onStockZoneFilterChange={setStockZoneFilter}
                 />
                 <ProductSort
                 sortOption={sortOption}

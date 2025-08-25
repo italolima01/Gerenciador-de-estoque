@@ -11,6 +11,8 @@ export type Product = {
   expirationDate: string; // YYYY-MM-DD
 };
 
+export type StockZone = 'green' | 'yellow' | 'red';
+
 export type ProductWithStatus = Product & GenerateRestockAlertOutput;
 
 export type OrderItem = {
@@ -32,7 +34,7 @@ export type Order = {
 
 // Duplicating the AI output schema type here to avoid circular dependency
 export type GenerateRestockAlertOutput = {
-  zone: 'green' | 'yellow' | 'red';
+  zone: StockZone;
   restockRecommendation: string;
   confidenceLevel: string;
 };
