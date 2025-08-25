@@ -63,11 +63,9 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // Remover defaultValues daqui para evitar o erro de SSR
   });
   
   React.useEffect(() => {
-    // Resetar o formulário aqui, no lado do cliente, quando o diálogo é aberto
     if (isOpen) {
       form.reset({
         name: '',
@@ -157,7 +155,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                       if (currentExpDate) {
                         form.setValue('expirationDate', form.getValues('expirationDate'));
                       }
-                      form.trigger(); // Força a revalidação
+                      form.trigger();
                   }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -312,3 +310,5 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     </Dialog>
   );
 }
+
+    
