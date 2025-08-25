@@ -43,11 +43,12 @@ const getFormSchema = (maxQuantity: number, unitsPerPack: number) => z.object({
     unitType: z.enum(['unit', 'pack']),
 }).refine(
     (data) => {
+        if (!unitsPerPack || unitsPerPack === 0) return data.quantity <= maxQuantity; // Failsafe
         const totalUnits = data.unitType === 'pack' ? data.quantity * unitsPerPack : data.quantity;
         return totalUnits <= maxQuantity;
     },
     {
-        message: `Estoque insuficiente. Máximo: ${Math.floor(maxQuantity / (unitsPerPack > 0 ? unitsPerPack : 1))} embalagens ou ${maxQuantity} unidades.`,
+        message: `Estoque insuficiente. Máximo disponível: ${maxQuantity} unidades.`,
         path: ['quantity'],
     }
 );
@@ -69,19 +70,18 @@ export function SelectQuantityDialog({ product, isOpen, onOpenChange, onConfirm,
   React.useEffect(() => {
     if (isOpen && product) {
        form.reset({ quantity: 1, unitType: 'unit' });
-       // Re-initialize resolver if product changes while dialog is open (edge case)
        form.trigger();
     }
   }, [isOpen, product, form]);
 
   if (!product) return null;
   
-  const canSellAsPack = product.unitsPerPack > 1;
-  const currentUnitType = form.watch('unitType');
-
+  const canSellAsPack = product.packType !== 'Unidade' && product.unitsPerPack > 1;
+  
   function onSubmit(values: FormValues) {
-    const totalUnits = values.unitType === 'pack' ? values.quantity * product!.unitsPerPack : values.quantity;
-    onConfirm(product!.id, totalUnits);
+    if(!product) return;
+    const totalUnits = values.unitType === 'pack' ? values.quantity * product.unitsPerPack : values.quantity;
+    onConfirm(product.id, totalUnits);
   }
 
   return (
@@ -95,38 +95,38 @@ export function SelectQuantityDialog({ product, isOpen, onOpenChange, onConfirm,
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="unitType"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Vender como:</FormLabel>
-                   {canSellAsPack && (
-                    <FormControl>
-                        <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex items-center space-x-4"
-                        >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                            <RadioGroupItem value="unit" id="unit"/>
-                            </FormControl>
-                            <FormLabel htmlFor="unit" className="font-normal cursor-pointer">Unidade</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                            <RadioGroupItem value="pack" id="pack" />
-                            </FormControl>
-                            <FormLabel htmlFor="pack" className="font-normal cursor-pointer">{product.packType} ({product.unitsPerPack} un.)</FormLabel>
-                        </FormItem>
-                        </RadioGroup>
-                    </FormControl>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {canSellAsPack && (
+                <FormField
+                control={form.control}
+                name="unitType"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                    <FormLabel>Vender como:</FormLabel>
+                        <FormControl>
+                            <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex items-center space-x-4"
+                            >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                <RadioGroupItem value="unit" id="unit"/>
+                                </FormControl>
+                                <FormLabel htmlFor="unit" className="font-normal cursor-pointer">Unidade</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                <RadioGroupItem value="pack" id="pack" />
+                                </FormControl>
+                                <FormLabel htmlFor="pack" className="font-normal cursor-pointer">{product.packType} ({product.unitsPerPack} un.)</FormLabel>
+                            </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
              <FormField
               control={form.control}
               name="quantity"

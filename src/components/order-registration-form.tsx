@@ -57,15 +57,15 @@ function formatCurrency(value: number) {
 }
 
 function getReadableQuantity(quantity: number, unitsPerPack: number, packType: string) {
-    if (!unitsPerPack || unitsPerPack <= 1 || quantity < unitsPerPack) {
+    if (packType === 'Unidade' || !unitsPerPack || unitsPerPack <= 1 || quantity < unitsPerPack) {
       return `${quantity} un.`;
     }
     const packs = Math.floor(quantity / unitsPerPack);
     const units = quantity % unitsPerPack;
     if (units === 0) {
-        return `${packs} ${packType}(s)`;
+        return `${packs} ${packType.toLowerCase()}(s)`;
     }
-    return `${packs} ${packType}(s) e ${units} un.`;
+    return `${packs} ${packType.toLowerCase()}(s) e ${units} un.`;
 }
 
 export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
