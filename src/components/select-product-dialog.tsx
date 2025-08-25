@@ -66,6 +66,17 @@ export function SelectProductDialog({ isOpen, onOpenChange, products, onSelectPr
     }
   }, [isOpen]);
 
+  const getPriceDisplay = (product: Product) => {
+    const { packType, price, packPrice } = product;
+
+    if (packType === 'Unidade') {
+        return `${formatCurrency(price)} / un.`;
+    }
+
+    const priceToShow = packPrice ?? price;
+    return `${formatCurrency(priceToShow)} / ${packType.toLowerCase()}`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -100,7 +111,7 @@ export function SelectProductDialog({ isOpen, onOpenChange, products, onSelectPr
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{getStockDisplay(product)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
+                  <TableCell className="text-right">{getPriceDisplay(product)}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
