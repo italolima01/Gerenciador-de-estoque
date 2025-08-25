@@ -56,11 +56,13 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         setNodeRef,
         transform,
         transition,
+        isDragging,
     } = useSortable({id: order.id});
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+        opacity: isDragging ? 0.5 : 1,
     };
 
     const totalOrderValue = React.useMemo(() => {
@@ -72,11 +74,16 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
 
 
     return (
-        <TableRow ref={setNodeRef} style={style} onClick={() => props.onOrderSelect(order)} className="cursor-pointer">
+        <TableRow 
+            ref={setNodeRef} 
+            style={style} 
+            {...attributes} 
+            {...listeners} 
+            onClick={() => props.onOrderSelect(order)} 
+            className="cursor-grab active:cursor-grabbing"
+        >
             <TableCell className="w-12 hidden sm:table-cell">
-                <Button variant="ghost" size="icon" {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className="cursor-grab">
-                    <GripVertical className="h-5 w-5 text-muted-foreground" />
-                </Button>
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
             </TableCell>
             <TableCell>
               <div className="font-medium">{order.customerName}</div>
@@ -108,7 +115,7 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
                       <span className="sr-only">Mais ações</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderEdit(order)}}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
