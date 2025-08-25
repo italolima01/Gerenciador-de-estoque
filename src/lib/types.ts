@@ -2,7 +2,7 @@
 export type Product = {
   id: string;
   name: string;
-  packType: string; // e.g., 'Caixa', 'Fardo'
+  packType: 'Caixa' | 'Fardo' | 'Unidade';
   unitsPerPack: number;
   packQuantity: number;
   quantity: number; // Total individual units (packQuantity * unitsPerPack)

@@ -30,10 +30,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
-  packType: z.string().min(2, { message: 'O tipo de embalagem deve ter pelo menos 2 caracteres.' }),
+  packType: z.enum(['Caixa', 'Fardo', 'Unidade'], { required_error: 'Selecione o tipo de embalagem.' }),
   unitsPerPack: z.coerce.number().int().min(1, { message: 'Deve haver pelo menos 1 unidade.' }),
   packQuantity: z.coerce.number().int().min(0, { message: 'A quantidade não pode ser negativa.' }),
   packPrice: z.string().refine(value => !isNaN(parseFloat(value.replace('.', '').replace(',', '.'))), { message: 'O preço deve ser um número válido.' }),
@@ -62,7 +63,7 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: product?.name || '',
-      packType: product?.packType || '',
+      packType: product?.packType || undefined,
       unitsPerPack: product?.unitsPerPack || 1,
       packQuantity: product?.packQuantity || 0,
       packPrice: formatPriceForInput(product?.packPrice) || '',
@@ -142,9 +143,18 @@ export function EditProductDialog({ product, isOpen, onOpenChange, onProductEdit
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Embalagem</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Caixa, Fardo" {...field} />
-                  </FormControl>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Caixa">Caixa</SelectItem>
+                      <SelectItem value="Fardo">Fardo</SelectItem>
+                      <SelectItem value="Unidade">Unidade</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
