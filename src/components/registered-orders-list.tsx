@@ -68,7 +68,9 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
     const totalOrderValue = React.useMemo(() => {
         return order.items.reduce((total, item) => {
             const product = products.find(p => p.id === item.productId);
-            return total + (product?.price || 0) * item.quantity;
+            // The price is always per unit, so this calculation is correct.
+            const pricePerUnit = product?.price || 0;
+            return total + (pricePerUnit * item.quantity);
         }, 0);
     }, [order.items, products]);
 
@@ -77,12 +79,15 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         <TableRow 
             ref={setNodeRef} 
             style={style} 
-            {...attributes} 
-            {...listeners} 
             onClick={() => props.onOrderSelect(order)} 
-            className="cursor-grab active:cursor-grabbing"
+            className="cursor-pointer"
         >
-            <TableCell className="w-12 hidden sm:table-cell">
+            <TableCell 
+                {...attributes} 
+                {...listeners}
+                className="w-12 hidden sm:table-cell cursor-grab active:cursor-grabbing"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
             </TableCell>
             <TableCell>

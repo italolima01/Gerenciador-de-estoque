@@ -394,7 +394,7 @@ export function Dashboard() {
   const headerButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)} disabled={isPending}>
+            <Button onClick={() => setRegisterOrderSheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Registrar Pedido
             </Button>
@@ -402,19 +402,19 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)} disabled={isPending}>
+            <Button onClick={() => setAddDialogOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab, isPending]);
+  }, [activeTab]);
   
   const mobileHeaderButton = useMemo(() => {
     if (activeTab === 'orders') {
         return (
-            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm" disabled={isPending}>
+            <Button onClick={() => setRegisterOrderSheetOpen(true)} size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Pedido
             </Button>
@@ -422,14 +422,14 @@ export function Dashboard() {
     }
     if (activeTab === 'inventory') {
         return (
-            <Button onClick={() => setAddDialogOpen(true)} size="sm" disabled={isPending}>
+            <Button onClick={() => setAddDialogOpen(true)} size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Produto
             </Button>
         );
     }
     return null;
-  }, [activeTab, isPending]);
+  }, [activeTab]);
 
 
   return (
