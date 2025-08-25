@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
@@ -188,28 +188,41 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                 )}
             />
             <FormField
-            control={form.control}
-            name="deliveryDate"
-            render={({ field }) => (
+              control={form.control}
+              name="deliveryDate"
+              render={({ field }) => (
                 <FormItem className="flex flex-col">
-                <FormLabel>Data de Entrega</FormLabel>
-                <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                    <FormControl>
+                  <FormLabel>Data de Entrega</FormLabel>
+                  <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          placeholder="dd/mm/aaaa"
+                          value={field.value ? format(field.value, 'dd/MM/yyyy') : ''}
+                          onChange={(e) => {
+                            const date = parse(e.target.value, 'dd/MM/yyyy', new Date());
+                            if (!isNaN(date.getTime())) {
+                              field.onChange(date);
+                            } else {
+                              field.onChange(undefined);
+                            }
+                          }}
+                          className="pr-8"
+                        />
+                      </FormControl>
+                      <PopoverTrigger asChild>
                         <Button
-                        variant={'outline'}
-                        className={cn(
-                            'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                        )}
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                          aria-label="Abrir calendário"
                         >
-                        {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Escolha uma data</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          <CalendarIcon className="h-4 w-4" />
                         </Button>
-                    </FormControl>
-                    </PopoverTrigger>
+                      </PopoverTrigger>
+                    </div>
                     <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                      <Calendar
                         mode="single"
                         captionLayout="buttons"
                         fromDate={new Date()}
@@ -220,12 +233,12 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
                           setCalendarOpen(false);
                         }}
                         initialFocus
-                    />
+                      />
                     </PopoverContent>
-                </Popover>
-                <FormMessage />
+                  </Popover>
+                  <FormMessage />
                 </FormItem>
-            )}
+              )}
             />
         </div>
         

@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { format, addYears } from 'date-fns';
+import { format, addYears, parse } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
@@ -124,8 +124,12 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
     value = value.replace(/\D/g, '');
 
     // Convert to number, divide by 100, then format back to string.
-    const numericValue = (parseInt(value, 10) / 100).toFixed(2);
-    value = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(parseFloat(numericValue));
+    const numericValue = (parseInt(value, 10) / 100);
+    if(isNaN(numericValue)) {
+        fieldChange('');
+        return;
+    }
+    value = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numericValue);
 
     fieldChange(value);
   };
@@ -272,20 +276,33 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                 <FormItem className="flex flex-col">
                   <FormLabel>Data de Vencimento</FormLabel>
                   <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
+                    <div className="relative">
                       <FormControl>
-                        <Button
-                          variant={'outline'}
-                          className={cn(
-                            'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Escolha uma data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
+                        <Input
+                          placeholder="dd/mm/aaaa"
+                          value={field.value ? format(field.value, 'dd/MM/yyyy') : ''}
+                          onChange={(e) => {
+                            const date = parse(e.target.value, 'dd/MM/yyyy', new Date());
+                            if (!isNaN(date.getTime())) {
+                              field.onChange(date);
+                            } else {
+                              field.onChange(undefined);
+                            }
+                          }}
+                          className="pr-8"
+                        />
                       </FormControl>
-                    </PopoverTrigger>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                          aria-label="Abrir calendário"
+                        >
+                          <CalendarIcon className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                    </div>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
@@ -294,7 +311,7 @@ export function AddProductDialog({ isOpen, onOpenChange, onProductAdd, isPending
                         toDate={addYears(new Date(), 10)}
                         selected={field.value}
                         onSelect={(date) => {
-                          if(date) field.onChange(date);
+                          if (date) field.onChange(date);
                           setCalendarOpen(false);
                         }}
                         disabled={(date) => date < new Date()}
