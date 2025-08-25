@@ -63,7 +63,12 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
+        cursor: 'grab',
     };
+    
+    if (isDragging) {
+        style.cursor = 'grabbing';
+    }
 
     const totalOrderValue = React.useMemo(() => {
         return order.items.reduce((total, item) => {
@@ -79,13 +84,12 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         <TableRow 
             ref={setNodeRef} 
             style={style} 
-            onClick={() => props.onOrderSelect(order)} 
-            className="cursor-pointer"
+            onClick={() => props.onOrderSelect(order)}
+            {...attributes} 
+            {...listeners}
         >
             <TableCell 
-                {...attributes} 
-                {...listeners}
-                className="w-12 hidden sm:table-cell cursor-grab active:cursor-grabbing"
+                className="w-12 hidden sm:table-cell"
                 onClick={(e) => e.stopPropagation()}
             >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
