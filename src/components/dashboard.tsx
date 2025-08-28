@@ -359,11 +359,6 @@ export function Dashboard() {
       );
     }
     
-    // Stock zone filter
-    if (stockZoneFilter !== 'all') {
-        filtered = filtered.filter(product => getZoneForQuantity(product.quantity) === stockZoneFilter);
-    }
-    
     // Sorting
     const sorted = filtered.sort((a, b) => {
       let compareResult = 0;
@@ -388,7 +383,7 @@ export function Dashboard() {
 
     return sorted;
 
-  }, [products, searchQuery, stockZoneFilter, sortOption, sortDirection]);
+  }, [products, searchQuery, sortOption, sortDirection]);
 
 
   const headerButton = useMemo(() => {
