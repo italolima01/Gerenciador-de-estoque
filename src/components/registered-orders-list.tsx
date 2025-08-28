@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Order, Product } from '@/lib/types';
