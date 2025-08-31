@@ -78,17 +78,11 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         <TableRow 
             ref={setNodeRef} 
             style={style} 
-            className="cursor-pointer"
+            className="cursor-grab"
             onClick={() => props.onOrderSelect(order)}
+            {...listeners}
+            {...attributes}
         >
-            <TableCell 
-                className="w-10 cursor-grab pr-0"
-                onClick={(e) => e.stopPropagation()}
-                {...listeners}
-                {...attributes}
-            >
-                <GripVertical className="h-5 w-5 text-muted-foreground" />
-            </TableCell>
             <TableCell>
               <div className="font-medium">{order.customerName}</div>
               <div className="text-sm text-muted-foreground md:hidden">
@@ -189,7 +183,6 @@ export function RegisteredOrdersList({ orders, products, isLoading, ...props }: 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-10"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
           <TableHead className="hidden sm:table-cell">Status</TableHead>
