@@ -3,13 +3,10 @@
 
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { StockZone } from '@/lib/types';
 
 interface ProductFiltersProps {
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
-  stockZoneFilter: StockZone | 'all';
-  onStockZoneFilterChange: (value: StockZone | 'all') => void;
 }
 
 export function ProductFilters({

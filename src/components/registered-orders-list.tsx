@@ -19,11 +19,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, CheckCircle, RotateCcw, GripVertical, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, CheckCircle, RotateCcw, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import * as React from 'react';
 
 interface RegisteredOrdersListProps {
@@ -35,6 +33,7 @@ interface RegisteredOrdersListProps {
   onOrderStatusChange: (orderId: string, status: Order['status']) => void;
   onMarkAsComplete: (order: Order) => void;
   onOrderDelete: (order: Order) => void;
+  onMoveOrder: (orderId: string, direction: 'up' | 'down') => void;
 }
 
 const statusVariantMap: { [key in Order['status']]: BadgeProps['variant'] } = {
@@ -49,22 +48,7 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-const DraggableTableRow = ({ order, products, ...props }: { order: Order, products: Product[] } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading' | 'products'>) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({id: order.id});
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
+const OrderRow = ({ order, products, index, totalOrders, ...props }: { order: Order, products: Product[], index: number, totalOrders: number } & Omit<RegisteredOrdersListProps, 'orders' | 'isLoading' | 'products'>) => {
     const totalOrderValue = React.useMemo(() => {
         return order.items.reduce((total, item) => {
             const product = products.find(p => p.id === item.productId);
@@ -73,20 +57,39 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         }, 0);
     }, [order.items, products]);
 
-
     return (
         <TableRow 
-            ref={setNodeRef} 
-            style={style} 
+            key={order.id}
             onClick={() => props.onOrderSelect(order)}
+            className="cursor-pointer"
         >
-            <TableCell 
-              className="cursor-grab p-2 pr-0 w-12" 
-              onClick={(e) => e.stopPropagation()} 
-              {...listeners} 
-              {...attributes}
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+            <TableCell className="w-12 p-2 hidden sm:table-cell">
+              <div className="flex flex-col items-center gap-1">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    disabled={index === 0}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        props.onMoveOrder(order.id, 'up');
+                    }}
+                >
+                    <ArrowUp className="h-4 w-4"/>
+                </Button>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    disabled={index === totalOrders - 1}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        props.onMoveOrder(order.id, 'down');
+                    }}
+                >
+                    <ArrowDown className="h-4 w-4"/>
+                </Button>
+              </div>
             </TableCell>
             <TableCell>
               <div className="font-medium">{order.customerName}</div>
@@ -188,7 +191,7 @@ export function RegisteredOrdersList({ orders, products, isLoading, ...props }: 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12 p-2"></TableHead>
+          <TableHead className="w-12 p-2 hidden sm:table-cell"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
           <TableHead className="hidden sm:table-cell">Status</TableHead>
@@ -197,11 +200,16 @@ export function RegisteredOrdersList({ orders, products, isLoading, ...props }: 
         </TableRow>
       </TableHeader>
       <TableBody>
-        <SortableContext items={orders.map(o => o.id)} strategy={verticalListSortingStrategy}>
-            {orders.map((order) => (
-              <DraggableTableRow key={order.id} order={order} products={products} {...props} />
-            ))}
-        </SortableContext>
+        {orders.map((order, index) => (
+            <OrderRow 
+                key={order.id} 
+                order={order} 
+                products={products} 
+                index={index}
+                totalOrders={orders.length}
+                {...props} 
+            />
+        ))}
       </TableBody>
     </Table>
   );

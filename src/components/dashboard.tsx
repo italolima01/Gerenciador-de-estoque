@@ -1,9 +1,8 @@
+
 'use client';
 
 import { useState, useTransition, useMemo, useEffect, useCallback } from 'react';
-import { PlusCircle } from 'lucide-react';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
+import { PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
 
 import type { Order, Product, ProductWithStatus, GenerateRestockAlertOutput, StockZone } from '@/lib/types';
 import { getRestockAlert } from '@/app/actions';
@@ -336,17 +335,21 @@ export function Dashboard() {
       setConfirmCompleteOpen(false);
   }, [orderToComplete, handleChangeOrderStatus]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const {active, over} = event;
-    if (active.id !== over?.id) {
-      setOrders((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over?.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  }, []);
+  const handleMoveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
+    setOrders(prevOrders => {
+        const index = prevOrders.findIndex(o => o.id === orderId);
+        if (index === -1) return prevOrders;
+        if (direction === 'up' && index === 0) return prevOrders;
+        if (direction === 'down' && index === prevOrders.length - 1) return prevOrders;
 
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        const newOrders = [...prevOrders];
+        const [movedOrder] = newOrders.splice(index, 1);
+        newOrders.splice(newIndex, 0, movedOrder);
+
+        return newOrders;
+    });
+  }, []);
 
   const processedProducts = useMemo(() => {
     let filtered = [...products];
@@ -465,14 +468,6 @@ export function Dashboard() {
                 <ProductFilters
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
-                stockZoneFilter={stockZoneFilter}
-                onStockZoneFilterChange={setStockZoneFilter}
-                />
-                <ProductSort
-                sortOption={sortOption}
-                onSortOptionChange={setSortOption}
-                sortDirection={sortDirection}
-                onSortDirectionChange={setSortDirection}
                 />
             </div>
             {isLoading ? (
@@ -526,7 +521,6 @@ export function Dashboard() {
             </div>
             <Card className="bg-card/50">
               <CardContent className="pt-6">
-                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <RegisteredOrdersList 
                         orders={orders}
                         products={products}
@@ -536,8 +530,8 @@ export function Dashboard() {
                         onOrderStatusChange={handleChangeOrderStatus}
                         onMarkAsComplete={handleOpenCompleteDialog}
                         onOrderDelete={setSelectedOrderForDelete}
+                        onMoveOrder={handleMoveOrder}
                     />
-                </DndContext>
               </CardContent>
             </Card>
           </TabsContent>
