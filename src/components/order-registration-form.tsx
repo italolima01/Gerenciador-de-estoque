@@ -47,6 +47,7 @@ interface OrderRegistrationFormProps {
   products: Product[];
   isPending: boolean;
   onSubmit: (orderData: Omit<Order, 'id' | 'createdAt' | 'status'>) => void;
+  onCancel: () => void;
 }
 
 function formatCurrency(value: number) {
@@ -68,7 +69,7 @@ function getReadableQuantity(quantity: number, unitsPerPack: number, packType: s
     return `${packs} ${packType.toLowerCase()}(s) e ${units} un.`;
 }
 
-export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRegistrationFormProps) {
+export function OrderRegistrationForm({ products, isPending, onSubmit, onCancel }: OrderRegistrationFormProps) {
   const { toast } = useToast();
   const [isCalendarOpen, setCalendarOpen] = React.useState(false);
   const [isConfirming, setIsConfirming] = React.useState(false);
@@ -374,7 +375,10 @@ export function OrderRegistrationForm({ products, isPending, onSubmit }: OrderRe
             )}
         />
         <Separator />
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+                Cancelar
+            </Button>
             <Button type="submit" disabled={isPending || totalOrderValue === 0}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Registrar Pedido

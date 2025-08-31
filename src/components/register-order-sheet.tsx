@@ -7,12 +7,9 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
-  SheetClose,
 } from '@/components/ui/sheet';
 import { OrderRegistrationForm } from './order-registration-form';
 import type { Order, Product } from '@/lib/types';
-import { Button } from './ui/button';
 
 interface RegisterOrderSheetProps {
   isOpen: boolean;
@@ -43,6 +40,7 @@ export function RegisterOrderSheet({
                 products={products}
                 onSubmit={onOrderSubmit}
                 isPending={isPending}
+                onCancel={() => onOpenChange(false)}
             />
         </div>
       </SheetContent>
