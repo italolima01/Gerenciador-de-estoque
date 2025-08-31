@@ -68,7 +68,6 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
     const totalOrderValue = React.useMemo(() => {
         return order.items.reduce((total, item) => {
             const product = products.find(p => p.id === item.productId);
-            // The price is always per unit, so this calculation is correct.
             const pricePerUnit = product?.price || 0;
             return total + (pricePerUnit * item.quantity);
         }, 0);
@@ -81,12 +80,12 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
             style={style} 
             className="cursor-pointer"
             onClick={() => props.onOrderSelect(order)}
-            {...attributes}
         >
             <TableCell 
-                className="w-12 hidden sm:table-cell cursor-grab"
+                className="w-10 cursor-grab pr-0"
                 onClick={(e) => e.stopPropagation()}
                 {...listeners}
+                {...attributes}
             >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
             </TableCell>
@@ -190,7 +189,7 @@ export function RegisteredOrdersList({ orders, products, isLoading, ...props }: 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12 hidden sm:table-cell"></TableHead>
+          <TableHead className="w-10"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
           <TableHead className="hidden sm:table-cell">Status</TableHead>
