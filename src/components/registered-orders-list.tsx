@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, XCircle, CheckCircle, RotateCcw, GripVertical, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, CheckCircle, RotateCcw, GripVertical, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -78,11 +78,16 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         <TableRow 
             ref={setNodeRef} 
             style={style} 
-            className="cursor-grab"
             onClick={() => props.onOrderSelect(order)}
-            {...listeners}
-            {...attributes}
         >
+            <TableCell 
+              className="cursor-grab p-2 pr-0 w-12" 
+              onClick={(e) => e.stopPropagation()} 
+              {...listeners} 
+              {...attributes}
+            >
+              <GripVertical className="h-5 w-5 text-muted-foreground" />
+            </TableCell>
             <TableCell>
               <div className="font-medium">{order.customerName}</div>
               <div className="text-sm text-muted-foreground md:hidden">
@@ -114,20 +119,20 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderEdit(order)}}>
+                    <DropdownMenuItem onClick={() => props.onOrderEdit(order)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar Pedido
                     </DropdownMenuItem>
                     
                     {order.status === 'Pendente' && (
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onMarkAsComplete(order); }}>
+                        <DropdownMenuItem onClick={() => props.onMarkAsComplete(order)}>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Marcar como Concluído
                         </DropdownMenuItem>
                     )}
 
                     {order.status === 'Concluído' && (
-                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); props.onOrderStatusChange(order.id, 'Pendente')}}>
+                         <DropdownMenuItem onClick={() => props.onOrderStatusChange(order.id, 'Pendente')}>
                             <RotateCcw className="mr-2 h-4 w-4" />
                             Reverter para Pendente
                         </DropdownMenuItem>
@@ -135,7 +140,7 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
 
                     <DropdownMenuSeparator />
                      <DropdownMenuItem 
-                        onClick={(e) => { e.stopPropagation(); props.onOrderDelete(order)}} 
+                        onClick={() => props.onOrderDelete(order)} 
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                     >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -183,6 +188,7 @@ export function RegisteredOrdersList({ orders, products, isLoading, ...props }: 
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-12 p-2"></TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="hidden md:table-cell">Data de Entrega</TableHead>
           <TableHead className="hidden sm:table-cell">Status</TableHead>
