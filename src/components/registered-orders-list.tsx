@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Order, Product } from '@/lib/types';
@@ -78,14 +79,14 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
         <TableRow 
             ref={setNodeRef} 
             style={style} 
-            {...attributes}
-            {...listeners}
-            className="cursor-grab"
+            className="cursor-pointer"
             onClick={() => props.onOrderSelect(order)}
+            {...attributes}
         >
             <TableCell 
-                className="w-12 hidden sm:table-cell"
+                className="w-12 hidden sm:table-cell cursor-grab"
                 onClick={(e) => e.stopPropagation()}
+                {...listeners}
             >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
             </TableCell>
@@ -100,15 +101,15 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
                 </Badge>
               </div>
             </TableCell>
-            <TableCell className="hidden md:table-cell cursor-pointer">
+            <TableCell className="hidden md:table-cell">
                 {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
             </TableCell>
-             <TableCell className="hidden sm:table-cell cursor-pointer">
+             <TableCell className="hidden sm:table-cell">
                 <Badge variant={statusVariantMap[order.status]}>
                     {order.status}
                 </Badge>
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-right font-medium cursor-pointer">
+            <TableCell className="hidden sm:table-cell text-right font-medium">
                 {formatCurrency(totalOrderValue)}
             </TableCell>
             <TableCell className="text-right">
