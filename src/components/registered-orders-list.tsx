@@ -81,6 +81,7 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
             {...attributes}
             {...listeners}
             className="cursor-grab"
+            onClick={() => props.onOrderSelect(order)}
         >
             <TableCell 
                 className="w-12 hidden sm:table-cell"
@@ -88,7 +89,7 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
             >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
             </TableCell>
-            <TableCell onClick={() => props.onOrderSelect(order)} className="cursor-pointer">
+            <TableCell>
               <div className="font-medium">{order.customerName}</div>
               <div className="text-sm text-muted-foreground md:hidden">
                 {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
@@ -99,15 +100,15 @@ const DraggableTableRow = ({ order, products, ...props }: { order: Order, produc
                 </Badge>
               </div>
             </TableCell>
-            <TableCell onClick={() => props.onOrderSelect(order)} className="hidden md:table-cell cursor-pointer">
+            <TableCell className="hidden md:table-cell cursor-pointer">
                 {format(parseISO(order.deliveryDate), 'dd/MM/yyyy')}
             </TableCell>
-             <TableCell onClick={() => props.onOrderSelect(order)} className="hidden sm:table-cell cursor-pointer">
+             <TableCell className="hidden sm:table-cell cursor-pointer">
                 <Badge variant={statusVariantMap[order.status]}>
                     {order.status}
                 </Badge>
             </TableCell>
-            <TableCell onClick={() => props.onOrderSelect(order)} className="hidden sm:table-cell text-right font-medium cursor-pointer">
+            <TableCell className="hidden sm:table-cell text-right font-medium cursor-pointer">
                 {formatCurrency(totalOrderValue)}
             </TableCell>
             <TableCell className="text-right">
